@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.14) 
 
+project(fullgame)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
-project(fullgame)
 
 # add a way for specifying dearIMGUI in the cmake dependencies
 
