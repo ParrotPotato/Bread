@@ -1,8 +1,12 @@
 #include <iostream>
-#include <SDL2/SDL.h>
-#include <GL/glew.h>
 
+#include <SDL2/SDL.h>
+
+#include <GL/glew.h>
 #include <glm/glm.hpp>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 
 #include <assert.h>
 
@@ -163,34 +167,119 @@ void opengl_debug_message_callback(GLenum source, GLenum type, GLuint id, GLenum
         sourceStr.c_str(), typeStr.c_str(), id, severityStr.c_str(), message);
 }
 
-void initialize_central_state(){
+char * load_entire_file_in_buffer(const char *filepath){
+    // should be later replaced with open call (instead of fopen)
+    FILE * fptr = fopen(filepath, "rb");
+    fseek(fptr, 0, SEEK_END);
+    long fsize = ftell(fptr);
+    char * string = (char *) malloc(fsize + 1);
+    string[fsize] = 0;
+    fread(string, fsize, 1, fptr);
+    return string;
 }
 
+int compile_shader(char * shader_buffer, GLenum type){
+    int shader_handle = glCreateShader(type);
+    glShaderSource(shader_handle, 1, &shader_buffer, 0);
+    glCompileShader(shader_handle);
+    GLint status = 0;
+    glGetShaderiv(shader_handle, GL_COMPILE_STATUS, &status);
+    if (status == GL_FALSE){
+        int error_log_length = 0;
+        glGetShaderiv(shader_handle, GL_INFO_LOG_LENGTH, &error_log_length);
+        char * error_log = (char *) malloc(error_log_length + 1);
+        glGetShaderInfoLog(shader_handle, error_log_length, &error_log_length, error_log);
+        printf("shader compilation error\n");
+        printf("%s\n", error_log);
+        free(error_log);
+        glDeleteShader(shader_handle);
+        shader_handle = 0;
+    }
+    return shader_handle;
+}
+
+int link_program(int * shader_list, int shader_count){
+    GLint program = glCreateProgram();
+    for(int i = 0; i < shader_count ; i++) glAttachShader(program, shader_list[i]);
+    glLinkProgram(program);
+    GLint status = 0;
+    glGetProgramiv(program, GL_LINK_STATUS, &status);
+    if (status == GL_FALSE) 
+    {
+        int error_log_length = 0;
+        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &error_log_length);
+        char * error_log = (char *) malloc(error_log_length + 1);
+        glGetProgramInfoLog(program, error_log_length, &error_log_length, error_log);
+        printf("program linking failed\n");
+        printf("%s\n", error_log);
+        free(error_log);
+        for(int i = 0; i < shader_count ; i++) glDetachShader(program, shader_list[i]);
+        glDeleteProgram(program);
+        program = 0;
+    }
+    return program;
+}
+
+struct Texture2D {
+    GLuint          id;
+    unsigned int    width;
+    unsigned int    height;
+    unsigned int    components;
+};
+
+int load_texture_memory(Texture2D* texture_ref, const char * filepath)
+{
+    stbi_set_flip_vertically_on_load(true);
+    // glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
+    int width, height;
+    int component;
+    // all the file loading and unloading should happen from the same function
+    unsigned char * image = stbi_load(filepath, &width, &height, &component, 0);
+
+    if (!image) {
+        printf("failed to load parse image from specified buffer\n");
+        return -1;
+    }
+    
+    GLuint texture_id;
+    glGenTextures(1, &texture_id);
+    glBindTexture(GL_TEXTURE_2D, texture_id);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    if (component == 3) {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
+    } else {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
+    }
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    stbi_image_free(image);
+
+    texture_ref->id= texture_id;
+    texture_ref->width = width;
+    texture_ref->height = height;
+    texture_ref->components = component;
+
+    return 0;
+}
 
 int main() {
     SDL_Init(SDL_INIT_EVERYTHING);
-
-    // NOTE: there is not error handling here, please add this in the future
-
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
     const char * shader_preprocessor = "#version 400";
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-
-
     auto windowHandle = SDL_CreateWindow("main window", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, SDL_WINDOW_OPENGL);
     assert(windowHandle != nullptr);
-
     auto contextHandle = SDL_GL_CreateContext(windowHandle);
     assert(contextHandle != nullptr);
-
     glewExperimental = GL_TRUE;
     if(glewInit() != GLEW_OK){
         std::cout << "failed to create context\n";
         return 0;
     }
-
     int opengl_context_flag = 0;
     glGetIntegerv(GL_CONTEXT_FLAGS, &opengl_context_flag);
     if (opengl_context_flag & GL_CONTEXT_FLAG_DEBUG_BIT){
@@ -199,22 +288,19 @@ int main() {
         glDebugMessageCallback(opengl_debug_message_callback, nullptr);
         glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
     }
-
-
     g_state.window_handle = windowHandle;
     g_state.context_handle = contextHandle;
+
 
     // starting imgui
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO & io = ImGui::GetIO(); (void)io;
-
     ImGui::StyleColorsDark();
     ImGui_ImplSDL2_InitForOpenGL(windowHandle, contextHandle);
     ImGui_ImplOpenGL3_Init(shader_preprocessor);
 
     bool bvalue = false;
-
     glClearColor(0.1, 0.2, 0.3, 1.0);
     glClearDepth(1.0f);
 
