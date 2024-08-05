@@ -1,4 +1,5 @@
 #include <iostream>
+#include <string>
 
 #include <SDL2/SDL.h>
 
@@ -42,11 +43,11 @@ struct MouseState{
 };
 
 
-#define STATE_QUIT_REQUESTED      1 << 0
-#define STATE_KEYBOARD_KEY_CHANGE_EVENT  1 << 1
-#define STATE_KEYBOARD_KEY_REPEATER_EVENT 1 << 2
-#define STATE_MOUSE_BUTTON_EVENT  1 << 3
-#define STATE_MOUSE_MOTION_EVENT  1 << 4
+#define STATE_QUIT_REQUESTED                1 << 0
+#define STATE_KEYBOARD_KEY_CHANGE_EVENT     1 << 1
+#define STATE_KEYBOARD_KEY_REPEATER_EVENT   1 << 2
+#define STATE_MOUSE_BUTTON_EVENT            1 << 3
+#define STATE_MOUSE_MOTION_EVENT            1 << 4
 
 struct SystemStateHandler {
     SDL_Window * window_handle;
@@ -264,6 +265,142 @@ int load_texture_memory(Texture2D* texture_ref, const char * filepath)
     return 0;
 }
 
+#define  CLEAN         0
+#define  UNFLUSHED     1 << 0
+#define  QUADCOUNT     8000
+struct Renderer2D {
+    float * mem_vertex_buffer = 0;
+    float * mem_color_buffer = 0;
+    unsigned int * mem_index_buffer = 0;
+
+    size_t added_vertices = 0;
+    size_t added_indices = 0;
+    size_t added_colors = 0;
+
+    size_t total_colors = 0;
+    size_t total_vertices = 0;
+    size_t total_indices = 0;
+
+    GLuint vbo = 0;
+    GLuint cbo = 0;
+
+    GLuint ibo = 0;
+    GLuint vao = 0;
+
+    int state = 0;
+
+};
+
+// I want to be able to render 2000 rects 
+// this means 2000 * 8 floats for vertices
+// this means 2000 * 6 unsigned for indices
+// this means 2000 * 12 floats for colors
+
+void init_renderer(Renderer2D * renderer){
+    renderer->mem_vertex_buffer = (float *) malloc(sizeof(float) * QUADCOUNT * 8);
+    renderer->mem_color_buffer = (float *) malloc(sizeof(float) * QUADCOUNT * 12);
+    renderer->mem_index_buffer  = (unsigned int *) malloc(sizeof(unsigned int) * QUADCOUNT * 6);
+
+    renderer->total_vertices = QUADCOUNT* 8;
+    renderer->total_colors = QUADCOUNT * 12;
+    renderer->total_indices  = QUADCOUNT * 6;
+
+    renderer->state = CLEAN;
+
+    glGenBuffers(1, &renderer->vbo);
+    glGenBuffers(1, &renderer->ibo);
+    glGenBuffers(1, &renderer->cbo);
+
+    glBindBuffer(GL_ARRAY_BUFFER, renderer->vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * renderer->total_vertices, renderer->mem_vertex_buffer, GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, renderer->cbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * renderer->total_colors , renderer->mem_color_buffer, GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderer->ibo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * renderer->total_indices, renderer->mem_index_buffer, GL_STATIC_DRAW);
+
+    glGenVertexArrays(1, &renderer->vao);
+    glBindVertexArray(renderer->vao);
+    glBindBuffer(GL_ARRAY_BUFFER, renderer->vbo);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
+    glBindBuffer(GL_ARRAY_BUFFER, renderer->cbo);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+    glBindVertexArray(0);
+}
+
+void start_rendering(Renderer2D * renderer){
+    renderer->added_indices = 0;
+    renderer->added_vertices = 0;
+    renderer->added_colors = 0;
+
+    renderer->state = CLEAN;
+}
+
+void render_quad_rect(Renderer2D * renderer, glm::vec2 pos, glm::vec2 dim, glm::vec3 color){
+
+    if (
+            renderer->added_vertices >= renderer->total_vertices 
+            || renderer->added_colors >= renderer->total_colors 
+            || renderer->added_indices >= renderer->total_indices
+       ){
+        std::cout << "renderer :: buffer entire full\n";
+        return;
+    } 
+
+    glm::vec2 rect[4];
+    rect[0] = glm::vec2(pos.x - dim.x * 0.5, pos.y - dim.y * 0.5);
+    rect[1] = glm::vec2(pos.x - dim.x * 0.5, pos.y + dim.y * 0.5);
+    rect[2] = glm::vec2(pos.x + dim.x * 0.5, pos.y + dim.y * 0.5);
+    rect[3] = glm::vec2(pos.x + dim.x * 0.5, pos.y - dim.y * 0.5);
+
+    glm::vec3 colors[4] = { color,color,color,color };
+
+    unsigned int indices[6] = {
+        0 + (unsigned int) renderer->added_vertices / 2, 
+        1 + (unsigned int) renderer->added_vertices / 2,
+        2 + (unsigned int) renderer->added_vertices / 2,
+        0 + (unsigned int) renderer->added_vertices / 2,
+        2 + (unsigned int) renderer->added_vertices / 2,
+        3 + (unsigned int) renderer->added_vertices / 2,
+    };
+
+    memcpy(renderer->mem_vertex_buffer + renderer->added_vertices, rect,  sizeof(float) * 2 * 4);
+    renderer->added_vertices += 2 * 4;
+
+    memcpy(renderer->mem_color_buffer + renderer->added_colors, colors, sizeof(float) * 3 * 4);
+    renderer->added_colors += 3 * 4;
+
+    memcpy(renderer->mem_index_buffer + renderer->added_indices, indices, sizeof(unsigned int) * 6);
+    renderer->added_indices += 6;
+}
+
+void end_rendering(Renderer2D * renderer){
+
+    glBindBuffer(GL_ARRAY_BUFFER, renderer->vbo);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * renderer->added_vertices, (void *) renderer->mem_vertex_buffer);
+
+    glBindBuffer(GL_ARRAY_BUFFER, renderer->cbo);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * renderer->added_colors, (void *) renderer->mem_color_buffer);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderer->ibo);
+    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, sizeof(unsigned int) * renderer->added_indices, (void *) renderer->mem_index_buffer);
+}
+
+
+void draw(Renderer2D * renderer){
+    glBindVertexArray(renderer->vao);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderer->ibo);
+    glDrawElements(GL_TRIANGLES, renderer->added_indices, GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
+}
+
+struct Box{
+    glm::vec2 pos, dim;
+    glm::vec3 color;
+};
+
+
 int main() {
     SDL_Init(SDL_INIT_EVERYTHING);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
@@ -271,13 +408,13 @@ int main() {
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-    auto windowHandle = SDL_CreateWindow("main window", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, SDL_WINDOW_OPENGL);
+    SDL_Window * windowHandle = SDL_CreateWindow("main window", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN_DESKTOP);
     assert(windowHandle != nullptr);
-    auto contextHandle = SDL_GL_CreateContext(windowHandle);
+    SDL_GLContext contextHandle = SDL_GL_CreateContext(windowHandle);
     assert(contextHandle != nullptr);
     glewExperimental = GL_TRUE;
     if(glewInit() != GLEW_OK){
-        std::cout << "failed to create context\n";
+        std::cout << "glew init : failed to create context\n";
         return 0;
     }
     int opengl_context_flag = 0;
@@ -303,6 +440,101 @@ int main() {
     bool bvalue = false;
     glClearColor(0.1, 0.2, 0.3, 1.0);
     glClearDepth(1.0f);
+
+
+    GLuint vbo;
+    GLuint ibo;
+
+    float vertices [] = {
+        -0.5f, -0.5f, 0.0f,
+        0.5f, -0.5f, 0.0f,
+        0.0f,  0.5f, 0.0f
+    };
+
+    unsigned int indices[] = {
+        0, 1, 2
+    };
+
+    const char * vertexshader = ""
+        "#version 400 core\n"
+        "layout (location = 0) in vec3 position;\n\n"
+        "void main(){\n"
+        "   gl_Position = vec4(position, 1.0);\n"
+        "}\n";
+
+    const char * fragmentshader = ""
+        "#version 400 core\n"
+        "out vec4 fragcolor;\n"
+        "void main(){\n"
+        "   fragcolor = vec4(0.8, 0.2, 0.3, 1.0);\n"
+        "}\n";
+
+    const char * v2 = ""
+        "#version 400 core\n"
+        "layout (location = 0) in vec2 position;\n\n"
+        "layout (location = 1) in vec3 color;\n\n"
+        "out vec3 vertcolor;\n"
+        "void main(){\n"
+        "   gl_Position = vec4(position, 0.0, 1.0);\n"
+        "   vertcolor= color;\n"
+        "}\n";
+
+    const char * f2 = ""
+        "#version 400 core\n"
+        "out vec4 fragcolor;\n"
+        "in  vec3 vertcolor;\n"
+        "void main(){\n"
+        "   fragcolor = vec4(vertcolor, 1.0);\n"
+        "}\n";
+
+    glGenBuffers(1, &vbo);
+    glGenBuffers(1, &ibo);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    GLuint vao;
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+    glBindVertexArray(0);
+
+    GLint vertex_shader = compile_shader((char *)vertexshader, GL_VERTEX_SHADER);
+    GLint fragment_shader = compile_shader((char *)fragmentshader, GL_FRAGMENT_SHADER);
+
+    GLint shaders [] = {
+        vertex_shader,
+        fragment_shader
+    };
+    GLint program = link_program(shaders, 2);
+
+    GLint v2s = compile_shader((char *)v2, GL_VERTEX_SHADER);
+    GLint f2s = compile_shader((char *)f2, GL_FRAGMENT_SHADER);
+
+    GLint s2[] = { v2s, f2s };
+    GLint p2 = link_program(s2, 2);
+
+
+    const int box_count = QUADCOUNT;
+    Box boxes[box_count];
+    
+    for(int i = 0 ; i < box_count;i++){
+        boxes[i].pos.x = (-100 + rand() % 200) / 100.0f;
+        boxes[i].pos.y = (-100 + rand() % 200) / 100.0f;
+
+        boxes[i].dim = glm::vec2(0.007, 0.007);
+
+        boxes[i].color.r = (rand()  % 100 ) / 100.0f;
+        boxes[i].color.b = (rand()  % 100 ) / 100.0f;
+        boxes[i].color.g = (rand()  % 100 ) / 100.0f;
+    }
+
+    Renderer2D renderer = {};
+    init_renderer(&renderer);
 
     while(is_quit_requested() == false){
 
@@ -379,36 +611,41 @@ int main() {
             }
         }
 
-
-        if (keyboard_key_change_event()){
-            std::cout << "keyboard key change event detected" << std::endl;
+        for(int i = 0 ; i < box_count; i++){
+            boxes[i].pos = boxes[i].pos - glm::vec2(0.00, 0.01);
+            if (boxes[i].pos.y <= -1.0f) {
+                boxes[i].pos.x = (-100 + rand() % 200) / 100.0f;
+                boxes[i].pos.y = 1.0f;
+            }
+            boxes[i].color.r = (rand()  % 100 ) / 100.0f;
+            boxes[i].color.b = (rand()  % 100 ) / 100.0f;
+            boxes[i].color.g = (rand()  % 100 ) / 100.0f;
         }
-        if (mouse_button_event()){
-            std::cout << "mouse button event detected" << std::endl;
-        }
-        if (mouse_motion_event()){
-            std::cout << "mouse motion event detected" << std::endl;
-        }
 
-
-        // all the update code will happen here in the main game loop
-
-        // all the update code will end here
 
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
 
-        // all the rendering code will happen here in the main game loop 
+        glUseProgram(program);
+        glBindVertexArray(vao);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+        glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
 
-        ImGui::Begin("Main Internal window");
+        glUseProgram(p2);
+        start_rendering(&renderer);
+        for(int i = 0 ; i < box_count; i++){
+            render_quad_rect(&renderer, boxes[i].pos, boxes[i].dim, boxes[i].color);
+        }
+        end_rendering(&renderer);
+        draw(&renderer);
+
+        ImGui::Begin("Main internal window");
         ImGui::Checkbox("Boolean property", &bvalue);
-        if (ImGui::Button("Reset property")){
+        if (ImGui::Button("Reset property")) {
             bvalue = false;
         }
         ImGui::End();
-
-        // this is where all the rendering code will end
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
