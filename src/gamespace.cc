@@ -2,6 +2,8 @@
 
 #include <cstdio>
 
+#include <SDL2/SDL.h>
+
 void enter_game_space(void *){
     printf("enter game called\n");
 }
