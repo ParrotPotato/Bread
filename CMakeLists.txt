@@ -5,6 +5,7 @@ project(fullgame)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_BUILD_TYPE Debug)
 
 # add a way for specifying dearIMGUI in the cmake dependencies
 
@@ -19,17 +20,13 @@ if (NOT EXISTS ${STB_IMAGE_FILE_PATH})
         COMMAND mkdir -p ${STB_IMAGE_FOLDER_PATH}
         RESULT_VARIABLE  mkdir_result
     )
-
     if(mkdir_result)
         message(FATAL_ERROR  "failed to create subdirectory")
     endif()
-
-
     execute_process(
         COMMAND curl -L -o ${STB_IMAGE_FILE_PATH}  ${STB_IMAGE_URL}
         RESULT_VARIABLE  curl_result
     )
-
     if (curl_result)
         message(FATAL_ERROR  "failted to curl ${STB_IMAGE_URL}")
     else()
@@ -66,9 +63,17 @@ target_include_directories(imgui PUBLIC ${OPENGL_INCLUDE_DIR})
 target_include_directories(imgui PUBLIC ${GLEW_INCLUDE_DIRS})
 target_include_directories(imgui PUBLIC ./external/imgui/  ./external/imgui/backends)
 
+add_library(gamespace
+    ./src/gamespace.cc
+)
+
+target_include_directories(gamespace PUBLIC ${SDL2_INCLUDE_DIRS})
+target_include_directories(gamespace PUBLIC ${OPENGL_INCLUDE_DIR})
+target_include_directories(gamespace PUBLIC ${GLEW_INCLUDE_DIRS})
 
 add_executable(fullgame
     src/main.cc
+    src/memory.cc
 )
 
 target_include_directories(fullgame PUBLIC ${SDL2_INCLUDE_DIRS})
@@ -84,4 +89,5 @@ target_link_libraries(fullgame ${SDL2_LIBRARIES})
 target_link_libraries(fullgame ${OPENGL_LIBRARIES})
 target_link_libraries(fullgame ${GLEW_LIBRARIES})
 target_link_libraries(fullgame imgui)
+target_link_libraries(fullgame gamespace)
 target_link_libraries(fullgame ${CMAKE_DL_LIBS})

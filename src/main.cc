@@ -15,6 +15,9 @@
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_opengl3.h>
 
+#include "memory.hh"
+#include "gamespace.hh"
+
 // Todo add keyboard / mouse / joystick support
 // potentially multiple joystick support for couch co-op
 
@@ -291,11 +294,6 @@ struct Renderer2D {
 
 };
 
-// I want to be able to render 2000 rects 
-// this means 2000 * 8 floats for vertices
-// this means 2000 * 6 unsigned for indices
-// this means 2000 * 12 floats for colors
-
 void init_renderer(Renderer2D * renderer){
     renderer->mem_vertex_buffer = (float *) malloc(sizeof(float) * QUADCOUNT * 8);
     renderer->mem_color_buffer = (float *) malloc(sizeof(float) * QUADCOUNT * 12);
@@ -402,13 +400,47 @@ struct Box{
 
 
 int main() {
+
+    // Code for testing game dynamic loading
+
+    enter_game_space(0);
+    before_reset();
+    after_reset(0);
+
+    // Generating required memory buffers
+
+    // following is the test code for the memory allocator 
+    SuperArena mainstaticarena = {0};
+    mainstaticarena.ptr = malloc(1024);
+    mainstaticarena.size = 1024;
+
+    Arena perframearena = {0};
+    perframearena.ptr = mainstaticarena.ptr;
+    perframearena.cur = 0;
+    perframearena.size = mainstaticarena.size / 2;
+
+    int * values = ALLOCATE_ARRAY(&perframearena, 10, int);
+    values[0] = 0;
+    values[1] = 1;
+    values[2] = 2;
+    values[3] = 3;
+
+    unsigned long long * unsigned_values = ALLOCATE_ARRAY(&perframearena, 10,unsigned long long);
+    unsigned_values[0] = 0;
+    unsigned_values[1] = 1;
+    unsigned_values[2] = 2;
+    unsigned_values[3] = 3;
+
+
+    // generation ends
+
     SDL_Init(SDL_INIT_EVERYTHING);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
     const char * shader_preprocessor = "#version 400";
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-    SDL_Window * windowHandle = SDL_CreateWindow("main window", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN_DESKTOP);
+    SDL_Window * windowHandle = SDL_CreateWindow("main window", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, SDL_WINDOW_OPENGL);
     assert(windowHandle != nullptr);
     SDL_GLContext contextHandle = SDL_GL_CreateContext(windowHandle);
     assert(contextHandle != nullptr);
@@ -455,13 +487,17 @@ int main() {
         0, 1, 2
     };
 
+    // Following are the baby shaders which will be later converted to big boy shaders
+    // keeping the book of shadeds next to them so that they can learn and grow stronger
+    // https://thebookofshaders.com/
+
     const char * vertexshader = ""
         "#version 400 core\n"
         "layout (location = 0) in vec3 position;\n\n"
         "void main(){\n"
         "   gl_Position = vec4(position, 1.0);\n"
         "}\n";
-
+https://immersive-museum.jp/tokyo/
     const char * fragmentshader = ""
         "#version 400 core\n"
         "out vec4 fragcolor;\n"
