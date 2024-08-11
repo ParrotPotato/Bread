@@ -46,8 +46,6 @@ message(STATUS "SDL2 include headers : ${SDL2_INCLUDE_DIR}")
 message(STATUS "OpenGL include headers : ${OPENGL_INCLUDE_DIR}")
 message(STATUS "GLEW include headers : ${GLEW_INCLUDE_DIR}")
 
-
-
 add_library(imgui 
     ./external/imgui/imgui.cpp 
     ./external/imgui/imgui_draw.cpp
@@ -72,8 +70,9 @@ target_include_directories(gamespace PUBLIC ${OPENGL_INCLUDE_DIR})
 target_include_directories(gamespace PUBLIC ${GLEW_INCLUDE_DIRS})
 
 add_executable(fullgame
-    src/main.cc
+    src/platform.cc
     src/memory.cc
+    src/main.cc
 )
 
 target_include_directories(fullgame PUBLIC ${SDL2_INCLUDE_DIRS})
