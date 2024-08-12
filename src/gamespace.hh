@@ -1,8 +1,11 @@
 #ifndef GAMESPACE_HH
 #define GAMESPACE_HH
 
-void enter_game_space(void *);
-void * before_reset();
-void after_reset(void *);
+
+typedef void (*gamespace_update_function_t)();
+typedef void (*gamespace_init_function_t)();
+typedef void (*gamespace_before_unload_t)();
+typedef void (*gamespace_after_load_t)();
+
 
 #endif // GAMESPACE_HH

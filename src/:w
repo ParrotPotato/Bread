@@ -341,7 +341,7 @@ struct GamespaceLibrary{
 
 
 int load_library(GamespaceLibrary * lib) {
-    lib->handle = dlopen("./libgamespace.so", RTLD_NOW | RTLD_GLOBAL);
+    lib->handle = dlopen("./libgamespace.so", RTLD_NOW);
     if(!lib->handle) { printf("unable to load library ./libgamespace.so : %s\n", dlerror()); return -1; }
     lib->gspace_init_func = (gamespace_init_function_t) dlsym(lib->handle, "gamespace_init_function");
     if(!lib->gspace_init_func){ printf("unable to load function gamespace_init_function: %s\n", dlerror()); return -1; }
@@ -364,15 +364,6 @@ int unload_library(GamespaceLibrary * lib) {
 }
 
 int reload_library(GamespaceLibrary * lib){
-    if (unload_library(lib)){
-        printf("error whiel reload_library\n");
-        return -1;
-    }
-    if (load_library(lib)){
-        printf("error while reload_library\n");
-        return -1;
-    }
-    return 0;
 }
 
 
@@ -381,14 +372,24 @@ int main(int argc, char ** argv) {
     // Code for testing game dynamic loading
 
     // Platform specific code here
-    
-    GamespaceLibrary lib = {0};
-    if (load_library(&lib)) {
-        printf("error occurred while loading library for first time\n");
+    void * gamespace_instance = dlopen("./libgamespace.so", RTLD_NOW);
+    if(!gamespace_instance){
+        printf("failed to load gamespace library object : %s\n", dlerror());
         return -1;
     }
 
-    lib.gspace_init_func();
+    gamespace_update_function_t gspace_update_function = (gamespace_update_function_t) dlsym(gamespace_instance, "gamespace_update_function");
+    if (!gspace_update_function){
+        printf("failed to load function \'gamespace_update_function\' : %s\n", dlerror());
+        return -1;
+    }
+    gamespace_init_function_t gspace_init_function = (gamespace_init_function_t) dlsym(gamespace_instance, "gamespace_init_function");
+    if (!gspace_init_function){
+        printf("failed to load function \'gamespace_init_function\' : %s\n", dlerror());
+        return -1;
+    }
+    gspace_init_function();
+    
 
     // Generating required memory buffers
 
@@ -419,6 +420,7 @@ int main(int argc, char ** argv) {
     bool bvalue = false;
     glClearColor(0.1, 0.2, 0.3, 1.0);
     glClearDepth(1.0f);
+
 
     GLuint vbo;
     GLuint ibo;
@@ -586,10 +588,6 @@ int main(int argc, char ** argv) {
         platform_update_input_state();
         platform_begin_rendering();
 
-        if(is_key_down(SDLK_a)){
-            printf("a is down :: main\n");
-        }
-
         ImGui::Begin("Tiles testing");
         ImGui::ColorEdit3("Tint", glm::value_ptr(tint));
 
@@ -644,7 +642,7 @@ int main(int argc, char ** argv) {
         ImGui::Text("Frame per second : %.1f", fps);
         ImGui::End();
 
-        lib.gspace_update_func();
+        gspace_update_function();
 
         platform_end_rendering();
     }

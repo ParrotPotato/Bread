@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_BUILD_TYPE Debug)
+# set(CMAKE_CXX_FLAGS -rdynamic)
 
 # add a way for specifying dearIMGUI in the cmake dependencies
 
@@ -37,7 +38,6 @@ else()
 endif()
 
 
-
 find_package(SDL2 REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(GLEW REQUIRED) 
@@ -46,7 +46,7 @@ message(STATUS "SDL2 include headers : ${SDL2_INCLUDE_DIR}")
 message(STATUS "OpenGL include headers : ${OPENGL_INCLUDE_DIR}")
 message(STATUS "GLEW include headers : ${GLEW_INCLUDE_DIR}")
 
-add_library(imgui 
+add_library(imgui SHARED
     ./external/imgui/imgui.cpp 
     ./external/imgui/imgui_draw.cpp
     ./external/imgui/imgui_tables.cpp  
@@ -56,24 +56,32 @@ add_library(imgui
     ./external/imgui/backends/imgui_impl_opengl3.cpp 
 )
 
+set_target_properties(imgui PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 target_include_directories(imgui PUBLIC ${SDL2_INCLUDE_DIRS})
 target_include_directories(imgui PUBLIC ${OPENGL_INCLUDE_DIR})
 target_include_directories(imgui PUBLIC ${GLEW_INCLUDE_DIRS})
 target_include_directories(imgui PUBLIC ./external/imgui/  ./external/imgui/backends)
 
-add_library(gamespace
+add_library(gamespace SHARED
     ./src/gamespace.cc
 )
+
+set_target_properties(gamespace PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 target_include_directories(gamespace PUBLIC ${SDL2_INCLUDE_DIRS})
 target_include_directories(gamespace PUBLIC ${OPENGL_INCLUDE_DIR})
 target_include_directories(gamespace PUBLIC ${GLEW_INCLUDE_DIRS})
+target_include_directories(gamespace PUBLIC ./external/imgui/ ./external/imgui/backends)
 
 add_executable(fullgame
     src/platform.cc
     src/memory.cc
     src/main.cc
 )
+
+set_target_properties(fullgame PROPERTIES ENABLE_EXPORTS ON)
+
 
 target_include_directories(fullgame PUBLIC ${SDL2_INCLUDE_DIRS})
 target_include_directories(fullgame PUBLIC ${OPENGL_INCLUDE_DIR})
@@ -84,9 +92,9 @@ target_include_directories(fullgame PUBLIC ./external/stb)
 
 # the order of linking matters :: why, can this be better
 
+
 target_link_libraries(fullgame ${SDL2_LIBRARIES})
 target_link_libraries(fullgame ${OPENGL_LIBRARIES})
 target_link_libraries(fullgame ${GLEW_LIBRARIES})
 target_link_libraries(fullgame imgui)
-target_link_libraries(fullgame gamespace)
 target_link_libraries(fullgame ${CMAKE_DL_LIBS})
