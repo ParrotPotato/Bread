@@ -20,6 +20,9 @@
 
 /* Platform specific code */
 #include <dlfcn.h>
+#include <unistd.h>
+#include <sys/inotify.h>
+#include <sys/select.h>
 
 
 
@@ -377,16 +380,24 @@ int reload_library(GamespaceLibrary * lib){
 
 
 int main(int argc, char ** argv) {
-
-    // Code for testing game dynamic loading
-
-    // Platform specific code here
     
+    ///////////////////////////////////
+    ///// GAMESPACE LIBRARY LOAD   ////
+    ///////////////////////////////////
+
     GamespaceLibrary lib = {0};
     if (load_library(&lib)) {
         printf("error occurred while loading library for first time\n");
         return -1;
     }
+
+    ///////////////////////////////////
+    ///// GAMESPACE LIBRARY LOADE  ////
+    ///////////////////////////////////
+
+
+    // setting up inotify listeners on libgamespace to check 
+    // for updates or creations
 
     lib.gspace_init_func();
 
@@ -583,6 +594,8 @@ int main(int argc, char ** argv) {
 
     while(is_quit_requested() == false){
 
+        // routine stuff
+
         platform_update_input_state();
         platform_begin_rendering();
 
@@ -647,6 +660,12 @@ int main(int argc, char ** argv) {
         lib.gspace_update_func();
 
         platform_end_rendering();
+
+    
+        if (is_key_pressed(SDLK_r)){
+            reload_library(&lib);
+        }
+
     }
     platform_delete_all_data();
     return 0;

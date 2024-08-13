@@ -89,9 +89,7 @@ target_include_directories(fullgame PUBLIC ${GLEW_INCLUDE_DIRS})
 target_include_directories(fullgame PUBLIC ./external/imgui/   ./external/imgui/backends/)
 target_include_directories(fullgame PUBLIC ./external/stb)
 
-
 # the order of linking matters :: why, can this be better
-
 
 target_link_libraries(fullgame ${SDL2_LIBRARIES})
 target_link_libraries(fullgame ${OPENGL_LIBRARIES})

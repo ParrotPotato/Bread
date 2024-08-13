@@ -10,24 +10,29 @@
 #include "platform.hh"
 
 
+
+void update(){
+    return;
+}
+
+
+void internal_change(){
+}
+
 extern "C"
 void gamespace_update_function(){
     ImGui::Begin("Test gamespace window");
-    if(ImGui::Button("Click Me")){
-        printf("button clicked\n");
+    if (is_key_down(SDLK_a)){
+        ImGui::Text("a button is not up");
+    } else if (is_key_down(SDLK_b)){
+        ImGui::Text("b button is not up");
+    }else {
+        ImGui::Text("all buttons are up");
     }
 
-    if (is_key_down(SDLK_a)){
-        ImGui::Text("a button is down");
-        printf("a button is down");
-    } else {
-        ImGui::Text("a button is not down");
-    }
 
     ImGui::End();
 }
-
-#include <dlfcn.h>
 
 
 extern "C"    
