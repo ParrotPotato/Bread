@@ -63,8 +63,11 @@ target_include_directories(imgui PUBLIC ${OPENGL_INCLUDE_DIR})
 target_include_directories(imgui PUBLIC ${GLEW_INCLUDE_DIRS})
 target_include_directories(imgui PUBLIC ./external/imgui/  ./external/imgui/backends)
 
+
 add_library(gamespace SHARED
     ./src/gamespace.cc
+
+    ./external/stb/stb_image.c
 )
 
 set_target_properties(gamespace PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -73,15 +76,18 @@ target_include_directories(gamespace PUBLIC ${SDL2_INCLUDE_DIRS})
 target_include_directories(gamespace PUBLIC ${OPENGL_INCLUDE_DIR})
 target_include_directories(gamespace PUBLIC ${GLEW_INCLUDE_DIRS})
 target_include_directories(gamespace PUBLIC ./external/imgui/ ./external/imgui/backends)
+target_include_directories(gamespace PUBLIC ./external/stb/)
+
 
 add_executable(fullgame
     src/platform.cc
     src/memory.cc
     src/main.cc
+
+    ./external/stb/stb_image.c
 )
 
 set_target_properties(fullgame PROPERTIES ENABLE_EXPORTS ON)
-
 
 target_include_directories(fullgame PUBLIC ${SDL2_INCLUDE_DIRS})
 target_include_directories(fullgame PUBLIC ${OPENGL_INCLUDE_DIR})
