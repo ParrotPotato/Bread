@@ -34,10 +34,13 @@ struct MouseState{
 #define STATE_KEYBOARD_KEY_REPEATER_EVENT   1 << 2
 #define STATE_MOUSE_BUTTON_EVENT            1 << 3
 #define STATE_MOUSE_MOTION_EVENT            1 << 4
+#define STATE_WINDOW_EVENT                  1 << 5
 
 struct SystemStateHandler {
     SDL_Window * window_handle;
     SDL_GLContext  context_handle;
+
+    int window_width, window_height;
 
     KeyboardState key;
     MouseState    mouse;
@@ -46,9 +49,9 @@ struct SystemStateHandler {
 };
 
 const SDL_Window * get_window_handle();
+glm::ivec2         get_window_size();
 const SDL_GLContext get_context_handle();
 
-void set_quit_requested();
 void set_quit_request();
 bool is_quit_requested();
 bool keyboard_key_repeater_event();

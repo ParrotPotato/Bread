@@ -40,11 +40,67 @@ struct Texture2D{
     unsigned int    components;
 };
 
+struct SpriteSheet{
+    Texture2D * texture;
+    unsigned int x_max;
+    unsigned int y_max;
+};
+
+struct SpriteTextureInfo{
+    glm::vec2  pos;
+    glm::vec2  dim;
+};
+
+struct StaticWorldInformation{
+    // if it is -1 that don't draw anything
+
+    int * static_indices;
+
+    unsigned int space_width;
+    unsigned int space_height;
+};
+
+struct LevelEditor{ 
+    StaticWorldInformation world_info;
+    // note: this will later become a list of sprite-sheets 
+    // for now this is a single one
+    SpriteSheet * sprite;
+
+    float per_sprite_width;
+    float per_sprite_height;
+
+    int selected_sprite_x;
+    int selected_sprite_y;
+};
+
+
+struct Camera2D {
+    glm::mat4 projection;
+    glm::mat4 inverseprojection;
+
+    float xresolution;
+    float yresolution;
+
+    glm::vec2 position;
+};
+
+
+#define GAME_RUNNING      1 << 0
+#define TILE_PLACEMENT    1 << 1
+#define TILE_SELECTION    1 << 2
 
 struct GameMemory{
-    Renderer2D renderer;
-    glm::mat4 ortho_projection;
+    Renderer2D game_renderer;
+    Renderer2D static_ui_renderer;
+    LevelEditor level_editor;
+    Texture2D plain_texture;
     Texture2D tile_texture;
+
+    Camera2D camera;
+
+    glm::mat4 static_ortho_projection;
+
+    SpriteSheet sprite_sheet;
 
     MemoryArena permanent;
     MemoryArena temporary;
@@ -52,7 +108,8 @@ struct GameMemory{
     float xresolution;
     float yresolution;
 
-    int counter;
+    int current_ui;
+
     GLint  p1, p2, p3, p4;
 };
 

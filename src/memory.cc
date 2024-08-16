@@ -40,3 +40,9 @@ void * push_value_to_arena(MemoryArena * arena, size_t size, size_t alignment){
     arena->cur = arena->cur + (size_t) result - (size_t) present_ptr + size;
     return result;
 }
+
+void reset_arena_to_zero(MemoryArena * arena){
+    // question : should we reset the memory 
+    //  to 0 as well for mem reset
+    arena->cur = 0;
+}

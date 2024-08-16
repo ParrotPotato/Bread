@@ -85,7 +85,7 @@ int main(int argc, char ** argv) {
     // following is the test code for the memory allocator 
 
 
-    platform_init("main window", 800, 600, SDL_WINDOW_OPENGL);
+    platform_init("main window", 1.5 * 800, 1.5 * 600, SDL_WINDOW_OPENGL);
 
     GamespaceLibrary lib = {0};
     if (load_library(&lib)) {

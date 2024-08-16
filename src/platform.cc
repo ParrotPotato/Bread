@@ -13,9 +13,15 @@ SystemStateHandler g_state = {0};
 const SDL_Window * get_window_handle(){
     return g_state.window_handle;
 }
+
+glm::ivec2 get_window_size(){
+    return glm::ivec2(g_state.window_width, g_state.window_height);
+}
+
 const SDL_GLContext get_context_handle() {
     return g_state.context_handle;
 }
+
 
 int get_key_offset(int keycode){
     return ((keycode >= KEYOFFSET)? (keycode - KEYOFFSET + VISIBLEKEYS) : (keycode));
@@ -227,6 +233,10 @@ void platform_update_input_state(){
                 g_state.mouse.xpos = sdl_event.motion.x;
                 g_state.mouse.ypos = sdl_event.motion.y;
                 g_state.central_state |= STATE_MOUSE_MOTION_EVENT;
+                break;
+            case SDL_WINDOWEVENT:
+                SDL_GetWindowSize(g_state.window_handle, &g_state.window_width, &g_state.window_height);
+                g_state.central_state |= STATE_WINDOW_EVENT;
                 break;
                 // handle more events here
             default:
