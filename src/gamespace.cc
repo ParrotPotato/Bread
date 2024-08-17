@@ -16,7 +16,11 @@
  *          1. Add depth based rendering because we have multiple layeres 
  *             of transparent and translucent stuff being drawn as part of the 
  *             gui for texture updates
- * 6.    Level editor and world generator - ongoing
+ * 6.    Level editor and world generator - done
+ *          1. This needs some improvement in the basic world editing and
+ *             where should shoul be to run the game, pause the game, edit 
+ *             the world and then resume the world again
+ *             
  * 7.    Basic collisions                 - todo
  * 8.    Player movement                  - todo
  * 9.    Enemy movement                   - todo
@@ -312,6 +316,68 @@ void start_rendering(Renderer2D * renderer){
     renderer->added_vertices = 0;
     renderer->added_uv_coords = 0;
     renderer->added_colors = 0;
+}
+
+
+void render_quad_rect_tex_rot(
+        Renderer2D * renderer,
+        glm::vec2 pos,
+        glm::vec2 dim,
+        glm::vec4 color,
+        glm::vec2 uv_pos,
+        glm::vec2 uv_dim,
+        glm::vec2 center,
+        float rot){
+    if (
+            renderer->added_vertices >= renderer->total_vertices 
+            || renderer->added_colors >= renderer->total_colors 
+            || renderer->added_indices >= renderer->total_indices
+       ){
+        printf("renderer :: buffer entirly full\n");
+        return;
+    } 
+
+    glm::vec2 rect[4];
+    rect[0] = glm::vec2(pos.x, pos.y);
+    rect[1] = glm::vec2(pos.x, pos.y + dim.y);
+    rect[2] = glm::vec2(pos.x + dim.x, pos.y + dim.y);
+    rect[3] = glm::vec2(pos.x + dim.x, pos.y);
+
+    glm::mat4 rotation_matrix = glm::rotate(glm::mat4(1.0f), rot, glm::vec3(0.0f, 0.0f, 1.0f));
+
+    for(unsigned int i = 0; i < 4 ; i++){
+        rect[i] = center + glm::vec2(rotation_matrix *  glm::vec4((rect[i] - center), 0.0, 1.0));
+    }
+
+    glm::vec4 colors[4] = { color,color,color,color };
+    
+    glm::vec2 uv[4];
+    uv[0] = glm::vec2(uv_pos.x, uv_pos.y);
+    uv[1] = glm::vec2(uv_pos.x, uv_pos.y + uv_dim.y);
+    uv[2] = glm::vec2(uv_pos.x + uv_dim.x, uv_pos.y + uv_dim.y);
+    uv[3] = glm::vec2(uv_pos.x + uv_dim.x, uv_pos.y);
+
+    unsigned int indices[6] = {
+        0 + (unsigned int) renderer->added_vertices / 2, 
+        1 + (unsigned int) renderer->added_vertices / 2,
+        2 + (unsigned int) renderer->added_vertices / 2,
+        0 + (unsigned int) renderer->added_vertices / 2,
+        2 + (unsigned int) renderer->added_vertices / 2,
+        3 + (unsigned int) renderer->added_vertices / 2,
+    };
+
+
+    memcpy(renderer->mem_vertex_buffer + renderer->added_vertices, rect,  sizeof(float) * 2 * 4);
+    renderer->added_vertices += 2 * 4;
+
+    memcpy(renderer->mem_color_buffer + renderer->added_colors, colors, sizeof(float) * 4 * 4);
+    renderer->added_colors += 4 * 4;
+
+    memcpy(renderer->mem_uv_coord_buffer + renderer->added_uv_coords, uv, sizeof(float) * 2 * 4);
+    renderer->added_uv_coords += 2 * 4;
+
+    memcpy(renderer->mem_index_buffer + renderer->added_indices, indices, sizeof(unsigned int) * 6);
+    renderer->added_indices += 6;
 }
 
 
@@ -621,9 +687,16 @@ void render_tile_placement_gui(GameMemory * pointer){
     // check if there has been update
 
     if (is_button_down(SDL_BUTTON_LEFT)){
-        unsigned int world_offset = world_indices.x + world_indices.y * world->space_width;
-        unsigned int tile_offset = tile_indices.x  + tile_indices.y * editor->sprite->x_max;
-        world->static_indices[world_offset] = tile_offset;
+        int world_offset = world_indices.x + world_indices.y * world->space_width;
+        int tile_offset = tile_indices.x  + tile_indices.y * editor->sprite->x_max;
+
+        if(world_offset > world->space_width * world->space_height || world_offset < 0){
+            printf("world offset outside bounds skipping adding tile to world map\n");
+        } else if(tile_offset > editor->sprite->x_max * editor->sprite->y_max || tile_offset < 0){
+            printf("tile offset outside bounds skipping adding tile to world map\n");
+        } else {
+            world->static_indices[world_offset] = tile_offset;
+        }
     } 
     if (is_button_down(SDL_BUTTON_RIGHT)){
         unsigned int world_offset = world_indices.x + world_indices.y * world->space_width;
@@ -702,12 +775,14 @@ void render_tile_placement_gui(GameMemory * pointer){
     }
     ImGui::End();
 
-    render_quad_rect_tex(&pointer->game_renderer, 
+    render_quad_rect_tex_rot(&pointer->game_renderer, 
             mouse_target_pos, 
             mouse_target_size,
             glm::vec4(1.0, 1.0, 0.0, 1.0),
             target_uv_pos,
-            target_uv_dim
+            target_uv_dim,
+            glm::vec2(mouse_target_pos + (0.5f * mouse_target_size)),
+            2 * 3.14f * (float) get_ticks_since_start() / 1000.0f
             );
     end_rendering(&pointer->game_renderer);
     draw(&pointer->game_renderer);
