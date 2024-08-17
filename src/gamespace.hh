@@ -62,8 +62,10 @@ struct StaticWorldInformation{
 
 struct LevelEditor{ 
     StaticWorldInformation world_info;
+
     // note: this will later become a list of sprite-sheets 
     // for now this is a single one
+
     SpriteSheet * sprite;
 
     float per_sprite_width;
@@ -71,12 +73,13 @@ struct LevelEditor{
 
     int selected_sprite_x;
     int selected_sprite_y;
+
 };
 
 
 struct Camera2D {
     glm::mat4 projection;
-    glm::mat4 inverseprojection;
+    glm::mat4 inverse;
 
     float xresolution;
     float yresolution;

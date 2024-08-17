@@ -68,7 +68,7 @@
 #include "memory.hh"
 
 
-#define QUADCOUNT 100
+#define QUADCOUNT 20000
 
 const char * v1 = ""
 "#version 400 core\n"
@@ -442,7 +442,7 @@ void generate_camera_matrix(Camera2D * camera){
 
     glm::mat4 inverse_translation = glm::translate(glm::mat4(1.0f), -glm::vec3(camera->position, 0.0f));
     glm::vec3 scale_factor = glm::vec3(((float) camera->xresolution) / ((float) window_size.x), ((float) camera->yresolution) / ((float) window_size.y), 1.0f);
-    camera->inverseprojection = glm::scale(inverse_translation, scale_factor);
+    camera->inverse = glm::scale(inverse_translation, scale_factor);
 }
 
 extern "C"    
@@ -544,14 +544,14 @@ void gamespace_init_function(MemoryBlock * gspace_mem){
     glClearDepth(1.0f);
 
     StaticWorldInformation * world = &game_mem->level_editor.world_info;
-    world->static_indices = ALLOCATE_ARRAY(&game_mem->permanent, int, world->space_width * world->space_height);
     world->space_width = 120;
     world->space_height= 80;
+    world->static_indices = ALLOCATE_ARRAY(&game_mem->permanent, int, world->space_width * world->space_height);
 
-    for(unsigned int i = 0; i < world->space_width * world->space_height ; i++) {
-        world->static_indices[i]=-1;
+    // FIXME : this does not feel right but this can be done
+    for(unsigned int i = 0 ; i < world->space_width * world->space_height ; i++){
+        world->static_indices[i] = -1;
     }
-
 
     LevelEditor * editor = &game_mem->level_editor;
     editor->selected_sprite_x = 0;
@@ -566,6 +566,153 @@ void gamespace_init_function(MemoryBlock * gspace_mem){
 
     RESET_ARENA(&game_mem->temporary);
 }
+
+glm::vec2 window_to_world_pos(GameMemory * pointer, glm::vec2 pos){
+    glm::vec2 worldmousepos = glm::vec2(0.0);
+    pos.y = get_window_size().y - pos.y;
+    glm::vec4 _worldmousesposition = pointer->camera.inverse * glm::vec4(pos, 0.0f, 1.0f);
+    worldmousepos = _worldmousesposition;
+    return worldmousepos;
+}
+
+void render_static_world(GameMemory * pointer){
+    printf("render_static_world :: functionality not immplemented\n");
+}
+
+void render_world(GameMemory * pointer){
+    StaticWorldInformation * world =  &pointer->level_editor.world_info;
+}
+
+void render_tile_placement_gui(GameMemory * pointer){
+
+    // processing 
+
+    LevelEditor * editor = &pointer->level_editor;
+    StaticWorldInformation * world = &pointer->level_editor.world_info;
+
+    glm::vec2 target_uv_dim = glm::vec2(0.0f);
+    glm::vec2 target_uv_pos = glm::vec2(0.0f);
+    glm::ivec2 tile_indices = glm::ivec2(0);
+    {
+        unsigned int x_idx = pointer->level_editor.selected_sprite_x;
+        unsigned int y_idx = pointer->level_editor.selected_sprite_y;
+        unsigned int x_max = pointer->level_editor.sprite->x_max;
+        unsigned int y_max = pointer->level_editor.sprite->y_max;
+
+        target_uv_pos = glm::vec2(
+                1.0f / x_max * (x_idx % x_max),
+                1.0f / y_max * (y_idx % y_max)
+                );
+        target_uv_dim = glm::vec2(1.0/ x_max, 1.0 / y_max);
+        tile_indices = glm::ivec2(x_idx, y_idx);
+    }
+
+    glm::vec2 mouse_target_size = glm::vec2(editor->per_sprite_width, editor->per_sprite_height);
+    glm::vec2 mouse_target_pos = glm::vec2(0.0f);
+    glm::ivec2 world_indices = glm::ivec2(0);
+    {
+        glm::vec2 world_mouse_pos = window_to_world_pos(pointer, mouse_window_pos());
+        int x_pos = (int) (world_mouse_pos.x / editor->per_sprite_width) - (world_mouse_pos.x < 0 ? 1: 0);
+        int y_pos = (int) (world_mouse_pos.y / editor->per_sprite_height)- (world_mouse_pos.y < 0 ? 1: 0);
+        mouse_target_pos = glm::vec2(x_pos  * editor->per_sprite_width, y_pos * editor->per_sprite_height);
+        world_indices = glm::ivec2(x_pos, y_pos);
+    }
+
+    // check if there has been update
+
+    if (is_button_down(SDL_BUTTON_LEFT)){
+        unsigned int world_offset = world_indices.x + world_indices.y * world->space_width;
+        unsigned int tile_offset = tile_indices.x  + tile_indices.y * editor->sprite->x_max;
+        world->static_indices[world_offset] = tile_offset;
+    } 
+    if (is_button_down(SDL_BUTTON_RIGHT)){
+        unsigned int world_offset = world_indices.x + world_indices.y * world->space_width;
+        world->static_indices[world_offset] = -1;
+    }
+
+    // rendering
+
+    GLint projectionLoadtion = glGetUniformLocation(pointer->p4,  "projection");
+    glUseProgram(pointer->p4);
+
+    glUniformMatrix4fv(projectionLoadtion, 1, GL_FALSE, glm::value_ptr(pointer->camera.projection));
+
+    // rendering the world 
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, pointer->plain_texture.id);
+    glUniform1i(glGetUniformLocation(pointer->p4, "spriteTexture"), 0);
+
+    start_rendering(&pointer->game_renderer);
+    
+    for(unsigned int i = 0 ; i < world->space_width * world->space_height ; i++){
+        if(world->static_indices[i] != -1) continue;
+
+        int x_offset = i % world->space_width;
+        int y_offset = i / world->space_width;
+
+        glm::vec2 target_pos = glm::vec2(x_offset * editor->per_sprite_width, y_offset * editor->per_sprite_height);
+        glm::vec2 target_size= glm::vec2(editor->per_sprite_width, editor->per_sprite_height);
+
+        render_quad_rect_tex(&pointer->game_renderer,
+                target_pos,
+                target_size,
+                glm::vec4(0.396, 0.408, 0.62, 0.4),
+                glm::vec2(0.0), glm::vec2(1.0));
+    }
+    end_rendering(&pointer->game_renderer);
+    draw(&pointer->game_renderer);
+
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, editor->sprite->texture->id);
+    glUniform1i(glGetUniformLocation(pointer->p4, "spriteTexture"), 0);
+
+    start_rendering(&pointer->game_renderer);
+
+    unsigned int sprite_x_max = editor->sprite->x_max;
+    unsigned int sprite_y_max = editor->sprite->y_max;
+
+    ImGui::Begin("Level Render debug");
+
+    for(unsigned int i = 0 ; i < world->space_width * world->space_height ; i++){
+        if (world->static_indices[i] == -1) continue;
+
+        int pos_x_offset = i % world->space_width;
+        int pos_y_offset = i / world->space_width;
+
+        glm::vec2 target_pos = glm::vec2(pos_x_offset * editor->per_sprite_width, pos_y_offset * editor->per_sprite_height);
+        glm::vec2 target_size= glm::vec2(editor->per_sprite_width, editor->per_sprite_height);
+
+
+        int value = world->static_indices[i];
+        unsigned int tex_x_offset = value % sprite_x_max;
+        unsigned int tex_y_offset = value / sprite_x_max;
+        glm::vec2 target_uv_pos = glm::vec2( ((float) tex_x_offset) / sprite_x_max, ((float) tex_y_offset) / sprite_y_max);
+        glm::vec2 target_uv_size = glm::vec2( 1.0f / sprite_x_max , 1.0f/ sprite_y_max);
+
+        ImGui::Text("[%d] target_pos : (%f, %f), target_size: (%f, %f)", i, target_pos.x, target_pos.y, target_size.x, target_size.y);
+
+        render_quad_rect_tex(&pointer->game_renderer,
+                target_pos,
+                target_size,
+                glm::vec4(1.0),
+                target_uv_pos,
+                target_uv_size);
+    }
+    ImGui::End();
+
+    render_quad_rect_tex(&pointer->game_renderer, 
+            mouse_target_pos, 
+            mouse_target_size,
+            glm::vec4(1.0, 1.0, 0.0, 1.0),
+            target_uv_pos,
+            target_uv_dim
+            );
+    end_rendering(&pointer->game_renderer);
+    draw(&pointer->game_renderer);
+}
+
 
 void render_tile_selection_gui(GameMemory * pointer){
     // setup
@@ -691,6 +838,7 @@ void gamespace_update_function(MemoryBlock * gspace_mem){
     ImGui::Text("ysplits : %u\n", y_max);
     ImGui::Text("top left : %f, %f\n", bl.x, bl.y);
     ImGui::Text("bottom right : %f, %f\n", tr.x, tr.y);
+    ImGui::Text("ticks count : %u\n", get_ticks_since_start());
 
     ImGui::End();
 
@@ -710,55 +858,13 @@ void gamespace_update_function(MemoryBlock * gspace_mem){
 
        generate_camera_matrix(&pointer->camera);
     }
-
-    glm::vec2 worldmousepos = glm::vec2(0.0);
-    {
-        glm::vec2 mousepos = mouse_window_pos();
-        mousepos.y = get_window_size().y - mousepos.y;
-
-        glm::vec4 _worldmousesposition = pointer->camera.inverseprojection * glm::vec4(mousepos, 0.0f, 1.0f);
-        worldmousepos = _worldmousesposition;
-
-        ImGui::Begin("Window to world debug");
-        ImGui::Text("window pos : %f, %f", mousepos.x, mousepos.y);
-        ImGui::Text("mouse pos : %f, %f",  worldmousepos.x, worldmousepos.y);
-        ImGui::Text("frame rate : %f",  ImGui::GetIO().Framerate);
-        ImGui::End();
-    }
-
+    glm::vec2 worldmousepos = window_to_world_pos(pointer, mouse_window_pos());
     // rendering
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    GLint projectionLoadtion = glGetUniformLocation(pointer->p4,  "projection");
-    glUseProgram(pointer->p4);
-    glUniformMatrix4fv(projectionLoadtion, 1, GL_FALSE, glm::value_ptr(pointer->camera.projection));
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, pointer->tile_texture.id);
-    glUniform1i(glGetUniformLocation(pointer->p4, "spriteTexture"), 0);
-
-    start_rendering(&pointer->game_renderer);
-
-    render_quad_rect_tex(
-            &pointer->game_renderer,
-            glm::vec2(100, 100),
-            glm::vec2(editor->per_sprite_width, editor->per_sprite_height),
-            glm::vec4(1.0f),
-            bl, tr - bl 
-            );
-
-    render_quad_rect_tex(
-            &pointer->game_renderer,
-            worldmousepos - glm::vec2(editor->per_sprite_width  * 0.5, editor->per_sprite_height * 0.5),
-            glm::vec2(editor->per_sprite_width, editor->per_sprite_height),
-            glm::vec4(1.0f),
-            bl, tr - bl 
-            );
-
-    end_rendering(&pointer->game_renderer);
-    draw(&pointer->game_renderer);
+    render_tile_placement_gui(pointer);
 
     if (pointer->current_ui & TILE_SELECTION){
         render_tile_selection_gui(pointer);
