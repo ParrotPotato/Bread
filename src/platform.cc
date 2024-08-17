@@ -91,6 +91,10 @@ glm::vec2 mouse_window_motion(){
     return glm::vec2(g_state.mouse.xrel, g_state.mouse.yrel);
 }
 
+unsigned int get_ticks_since_start(){
+    return g_state.ticks;
+}
+
 void opengl_debug_message_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam){
     // Ignore non-significant error/warning codes
     if (id == 131169 || id == 131185 || id == 131218 || id == 131204) return;
@@ -153,6 +157,7 @@ void platform_init(const char * window, unsigned int width, unsigned int height,
     }
     g_state.window_handle = windowHandle;
     g_state.context_handle = contextHandle;
+    g_state.ticks = 0;
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -190,9 +195,17 @@ void platform_update_input_state(){
     int keyboard_events[256];
     int mouse_events[5];
 
+    ImGuiIO io = ImGui::GetIO();
+
     SDL_Event sdl_event;
     while(SDL_PollEvent(&sdl_event)){
         ImGui_ImplSDL2_ProcessEvent(&sdl_event);
+
+        // if io wants to capture this particular event then we pass this event to 
+        // rest of the application
+        if (io.WantCaptureMouse || io.WantCaptureKeyboard){
+            continue;
+        }
 
         // custom state handlers for special elements
 
@@ -243,6 +256,7 @@ void platform_update_input_state(){
                 break;
         }
     }
+    g_state.ticks = SDL_GetTicks();
 }
 
 void platform_begin_rendering(){

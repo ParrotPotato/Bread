@@ -45,6 +45,8 @@ struct SystemStateHandler {
     KeyboardState key;
     MouseState    mouse;
 
+    unsigned int  ticks;
+
     int central_state;
 };
 
@@ -68,6 +70,7 @@ bool is_button_pressed(int buttoncode);
 bool is_button_released(int buttoncode);
 glm::vec2 mouse_window_pos();
 glm::vec2 mouse_window_motion();
+unsigned int get_ticks_since_start();
 
 void opengl_debug_message_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar * message, const void * userParam);
 
