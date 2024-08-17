@@ -82,9 +82,6 @@ int reload_library(GamespaceLibrary * lib){
 
 int main(int argc, char ** argv) {
 
-    // following is the test code for the memory allocator 
-
-
     platform_init("main window", 1.5 * 800, 1.5 * 600, SDL_WINDOW_OPENGL);
 
     GamespaceLibrary lib = {0};
@@ -94,8 +91,8 @@ int main(int argc, char ** argv) {
     }
 
     MemoryBlock gspace_mem = {0};
-    gspace_mem.ptr = malloc(KB(500));
-    gspace_mem.size = KB(500);
+    gspace_mem.ptr = malloc(MB(50));
+    gspace_mem.size = MB(50);
 
     lib.gspace_init_func(&gspace_mem);
 
