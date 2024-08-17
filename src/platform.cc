@@ -201,7 +201,7 @@ void platform_update_input_state(){
     while(SDL_PollEvent(&sdl_event)){
         ImGui_ImplSDL2_ProcessEvent(&sdl_event);
 
-        // if io wants to capture this particular event then we pass this event to 
+        // if ImGUI wants to capture this particular event then we don't pass this event to 
         // rest of the application
         if (io.WantCaptureMouse || io.WantCaptureKeyboard){
             continue;
