@@ -66,6 +66,7 @@ target_include_directories(imgui PUBLIC ./external/imgui/  ./external/imgui/back
 
 add_library(gamespace SHARED
     ./src/gamespace.cc
+    ./src/physics.cc 
 
     ./external/stb/stb_image.c
 )
