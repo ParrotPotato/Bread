@@ -20,7 +20,6 @@
  *          1. This needs some improvement in the basic world editing and
  *             where should shoul be to run the game, pause the game, edit 
  *             the world and then resume the world again
- *             
  * 7.    Basic collisions                 - todo
  * 8.    Player movement                  - todo
  * 9.    Enemy movement                   - todo
@@ -628,7 +627,7 @@ void gamespace_init_function(MemoryBlock * gspace_mem){
     
 
     // initailize currnet game state
-    game_mem->current_ui = GAME_RUNNING;
+    game_mem->current_ui = 0;
 
     RESET_ARENA(&game_mem->temporary);
 }
@@ -647,6 +646,44 @@ void render_static_world(GameMemory * pointer){
 
 void render_world(GameMemory * pointer){
     StaticWorldInformation * world =  &pointer->level_editor.world_info;
+    LevelEditor * editor = &pointer->level_editor;
+
+    unsigned int sprite_x_max = editor->sprite->x_max;
+    unsigned int sprite_y_max = editor->sprite->y_max;
+
+    GLint projectionLoadtion = glGetUniformLocation(pointer->p4,  "projection");
+    glUseProgram(pointer->p4);
+    glUniformMatrix4fv(projectionLoadtion, 1, GL_FALSE, glm::value_ptr(pointer->camera.projection));
+    // rendering the world 
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, pointer->tile_texture.id);
+    glUniform1i(glGetUniformLocation(pointer->p4, "spriteTexture"), 0);
+    start_rendering(&pointer->game_renderer);
+    for(unsigned int i = 0 ; i < world->space_width * world->space_height ; i++){
+        if (world->static_indices[i] == -1) continue;
+
+        int pos_x_offset = i % world->space_width;
+        int pos_y_offset = i / world->space_width;
+
+        glm::vec2 target_pos = glm::vec2(pos_x_offset * editor->per_sprite_width, pos_y_offset * editor->per_sprite_height);
+        glm::vec2 target_size= glm::vec2(editor->per_sprite_width, editor->per_sprite_height);
+
+
+        int value = world->static_indices[i];
+        unsigned int tex_x_offset = value % sprite_x_max;
+        unsigned int tex_y_offset = value / sprite_x_max;
+        glm::vec2 target_uv_pos = glm::vec2( ((float) tex_x_offset) / sprite_x_max, ((float) tex_y_offset) / sprite_y_max);
+        glm::vec2 target_uv_size = glm::vec2( 1.0f / sprite_x_max , 1.0f/ sprite_y_max);
+
+        render_quad_rect_tex(&pointer->game_renderer,
+                target_pos,
+                target_size,
+                glm::vec4(1.0),
+                target_uv_pos,
+                target_uv_size);
+    }
+    end_rendering(&pointer->game_renderer);
+    draw(&pointer->game_renderer);
 }
 
 void render_tile_placement_gui(GameMemory * pointer){
@@ -686,22 +723,38 @@ void render_tile_placement_gui(GameMemory * pointer){
 
     // check if there has been update
 
+    ImGui::Begin("Debug");
+    ImGui::Text("world indices :: %d, %d", world_indices.x, world_indices.y);
+    ImGui::Text("tile indices :: %d, %d", tile_indices.x, tile_indices.y);
     if (is_button_down(SDL_BUTTON_LEFT)){
         int world_offset = world_indices.x + world_indices.y * world->space_width;
         int tile_offset = tile_indices.x  + tile_indices.y * editor->sprite->x_max;
-
-        if(world_offset > world->space_width * world->space_height || world_offset < 0){
+        if(
+                world_indices.x >= world->space_width || world_indices.x < 0 || 
+                world_indices.y >= world->space_height || world_indices.y < 0
+          ){
             printf("world offset outside bounds skipping adding tile to world map\n");
-        } else if(tile_offset > editor->sprite->x_max * editor->sprite->y_max || tile_offset < 0){
-            printf("tile offset outside bounds skipping adding tile to world map\n");
+        } else if(
+                tile_indices.x >= editor->sprite->x_max || tile_indices.x < 0 || 
+                tile_indices.y >= editor->sprite->y_max || tile_indices.y < 0
+          ){
+            printf("tile offset outside bounds skipping adding tile to world map\n"); 
         } else {
             world->static_indices[world_offset] = tile_offset;
         }
     } 
     if (is_button_down(SDL_BUTTON_RIGHT)){
-        unsigned int world_offset = world_indices.x + world_indices.y * world->space_width;
-        world->static_indices[world_offset] = -1;
+        int world_offset = world_indices.x + world_indices.y * world->space_width;
+        if(
+                world_indices.x >= world->space_width || world_indices.x < 0 || 
+                world_indices.y >= world->space_height || world_indices.y < 0
+          ){
+            printf("world offset outside bounds skipping adding tile to world map\n");
+        } else {
+            world->static_indices[world_offset] = -1;
+        }
     }
+    ImGui::End();
 
     // rendering
 
@@ -775,14 +828,12 @@ void render_tile_placement_gui(GameMemory * pointer){
     }
     ImGui::End();
 
-    render_quad_rect_tex_rot(&pointer->game_renderer, 
+    render_quad_rect_tex(&pointer->game_renderer, 
             mouse_target_pos, 
             mouse_target_size,
             glm::vec4(1.0, 1.0, 0.0, 1.0),
             target_uv_pos,
-            target_uv_dim,
-            glm::vec2(mouse_target_pos + (0.5f * mouse_target_size)),
-            2 * 3.14f * (float) get_ticks_since_start() / 1000.0f
+            target_uv_dim
             );
     end_rendering(&pointer->game_renderer);
     draw(&pointer->game_renderer);
@@ -792,6 +843,7 @@ void render_tile_placement_gui(GameMemory * pointer){
 void render_tile_selection_gui(GameMemory * pointer){
     // setup
     GLint projectionLoadtion = glGetUniformLocation(pointer->p4,  "projection");
+    LevelEditor * editor = &pointer->level_editor;
 
     glm::vec2 tile_render_size = glm::vec2(pointer->yresolution * 0.5);
 
@@ -800,6 +852,27 @@ void render_tile_selection_gui(GameMemory * pointer){
 
     unsigned int x_max = pointer->level_editor.sprite->x_max;
     unsigned int y_max = pointer->level_editor.sprite->y_max;
+
+    ImGui::Begin("Sprite selector");
+    ImGui::Text("selected xsplits : %u\n", editor->selected_sprite_x);
+    ImGui::Text("selected ysplits : %u\n", editor->selected_sprite_y);
+    ImGui::Text("xsplits          : %u\n", x_max);
+    ImGui::Text("ysplits          : %u\n", y_max);
+    ImGui::Text("ticks count      : %u\n", get_ticks_since_start());
+    ImGui::Text("fps              : %f\n", ImGui::GetIO().Framerate);
+    ImGui::End();
+
+
+    if (is_key_pressed(SDLK_RIGHT)) x_idx += 1;
+    if (is_key_pressed(SDLK_LEFT))  x_idx -= 1;
+    if (is_key_pressed(SDLK_DOWN))  y_idx -= 1;
+    if (is_key_pressed(SDLK_UP))    y_idx += 1;
+   
+    x_idx = (x_max + x_idx) % x_max;
+    y_idx = (y_max + y_idx) % y_max;
+
+    editor->selected_sprite_x = x_idx;
+    editor->selected_sprite_y = y_idx;
 
     glm::vec2 selected_sheet_offset = glm::vec2(
             tile_render_size.x / (x_max) * (x_idx % x_max), 
@@ -876,54 +949,30 @@ void gamespace_update_function(MemoryBlock * gspace_mem){
 
     // process stuff
 
-    int indices [] =  {8};
-    const int  index_length = 1;
 
-    LevelEditor * editor = &pointer->level_editor;
-
-    unsigned int x_max = editor->sprite->x_max;
-    unsigned int y_max = editor->sprite->y_max;
-
-    unsigned int x_idx = editor->selected_sprite_x;
-    unsigned int y_idx = editor->selected_sprite_y;
-
-    if (is_key_pressed(SDLK_RIGHT)) x_idx += 1;
-    if (is_key_pressed(SDLK_LEFT))  x_idx -= 1;
-    if (is_key_pressed(SDLK_DOWN))  y_idx -= 1;
-    if (is_key_pressed(SDLK_UP))    y_idx += 1;
-
-    x_idx = (x_max + x_idx) % x_max;
-    y_idx = (y_max + y_idx) % y_max;
-
-    editor->selected_sprite_x = x_idx;
-    editor->selected_sprite_y = y_idx;
-
-    glm::vec2 bl = glm::vec2(
-        1.0f / x_max * (x_idx % x_max),
-        1.0f / y_max * (y_idx % y_max)
-    );
-
-    glm::vec2 tr = bl + glm::vec2(1.0f / x_max, 1.0f/ y_max);
-
-
-    ImGui::Begin("Information");
-    ImGui::Text("selected xsplits : %u\n", editor->selected_sprite_x);
-    ImGui::Text("selected ysplits : %u\n", editor->selected_sprite_y);
-    ImGui::Text("xsplits : %u\n", x_max);
-    ImGui::Text("ysplits : %u\n", y_max);
-    ImGui::Text("top left : %f, %f\n", bl.x, bl.y);
-    ImGui::Text("bottom right : %f, %f\n", tr.x, tr.y);
-    ImGui::Text("ticks count : %u\n", get_ticks_since_start());
-
+    ImGui::Begin("General Information");
+    ImGui::Text("ticks count      : %u\n", get_ticks_since_start());
+    ImGui::Text("fps              : %f\n", ImGui::GetIO().Framerate);
     ImGui::End();
 
+
     if (is_key_pressed(SDLK_1)){
+        if (pointer->current_ui & TILE_PLACEMENT){
+            pointer->current_ui &= ~(TILE_PLACEMENT);
+            pointer->current_ui &= ~(TILE_SELECTION);
+        } else {
+            pointer->current_ui |= TILE_PLACEMENT;
+        }
+    }
+
+    if (is_key_pressed(SDLK_2) && pointer->current_ui & TILE_PLACEMENT){
         if (pointer->current_ui & TILE_SELECTION) {
             pointer->current_ui &= ~(TILE_SELECTION);
         } else {
             pointer->current_ui |= TILE_SELECTION;
         }
     }
+    
 
     { // camera update
        if (is_key_down(SDLK_d)) pointer->camera.position += glm::vec2(-20.0f, 0.0f);
@@ -939,8 +988,12 @@ void gamespace_update_function(MemoryBlock * gspace_mem){
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    render_tile_placement_gui(pointer);
-
+    if (pointer->current_ui == 0){
+        render_world(pointer);
+    } 
+    if (pointer->current_ui & TILE_PLACEMENT){
+        render_tile_placement_gui(pointer);
+    }
     if (pointer->current_ui & TILE_SELECTION){
         render_tile_selection_gui(pointer);
     }

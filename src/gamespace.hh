@@ -88,9 +88,8 @@ struct Camera2D {
 };
 
 
-#define GAME_RUNNING      1 << 0
-#define TILE_PLACEMENT    1 << 1
-#define TILE_SELECTION    1 << 2
+#define TILE_PLACEMENT    1 << 0
+#define TILE_SELECTION    1 << 1
 
 struct GameMemory{
     Renderer2D game_renderer;
