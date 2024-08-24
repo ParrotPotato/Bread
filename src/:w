@@ -592,7 +592,7 @@ void gamespace_init_function(MemoryBlock * gspace_mem){
 
     game_mem->static_ortho_projection =  glm::ortho(0.0f, xresolution, 0.0f, yresolution, 0.0f, 1000.0f);
 
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClearColor(0.1f, 0.4f, 0.03f, 1.0f);
     glClearDepth(1.0f);
 
     StaticWorldInformation * world = &game_mem->level_editor.world_info;
@@ -621,15 +621,7 @@ void gamespace_init_function(MemoryBlock * gspace_mem){
 
     game_mem->b1.pos = glm::vec2(250, 250);
     game_mem->b1.dim = glm::vec2(100, 100);
-    game_mem->b1.center = (game_mem->b1.pos);
-    game_mem->b1.rot = 0.0f;
-
-    game_mem->b2.pos = glm::vec2(0, 0);
-    game_mem->b2.dim = glm::vec2(100, 100);
-    game_mem->b2.center = (game_mem->b2.pos);
-    game_mem->b1.rot = 0.0f;
-
-    game_mem->rotating = false;
+    game_
 
     RESET_ARENA(&game_mem->temporary);
 }
@@ -684,73 +676,6 @@ void render_world(GameMemory * pointer){
                 target_uv_pos,
                 target_uv_size);
     }
-    end_rendering(&pointer->game_renderer);
-    draw(&pointer->game_renderer);
-}
-
-void render_collision_test(GameMemory * pointer){
-    // update the positions
-
-    BoxCollider * b1 = &pointer->b1;
-    BoxCollider * b2 = &pointer->b2;
-
-    b2->pos = window_to_world_pos(pointer, mouse_window_pos());
-    b2->center = window_to_world_pos(pointer, mouse_window_pos());
-
-    if (pointer->rotating){
-        b2->rot = 2 * 3.14 * get_ticks_since_start() / 1000;
-    }
-
-    
-    // b2->rot = 0.0f;
-
-    bool collided = check_collision(b1, b2);
-
-    // render the positions
-
-    GLint projectionLoadtion = glGetUniformLocation(pointer->p4,  "projection");
-    glUseProgram(pointer->p4);
-
-    glUniformMatrix4fv(projectionLoadtion, 1, GL_FALSE, glm::value_ptr(pointer->camera.projection));
-
-    // rendering the world 
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, pointer->plain_texture.id);
-    glUniform1i(glGetUniformLocation(pointer->p4, "spriteTexture"), 0);
-
-    start_rendering(&pointer->game_renderer);
-
-    {
-        render_quad_rect_tex_rot(
-                &pointer->game_renderer,
-                b1->pos - 0.5f * b1->dim,
-                b1->dim,
-                glm::vec4(1.0, 1.0, 1.0, 0.5),
-                glm::vec2(0.0),
-                glm::vec2(1.0),
-                b1->pos,
-                b1->rot
-        );
-    }
-
-    {
-        glm::vec4 color = glm::vec4(1.0, 1.0, 1.0, 0.5);
-        if (collided){
-            color = glm::vec4(1.0, 1.0, 0.0, 0.5);
-        }
-        render_quad_rect_tex_rot(
-                &pointer->game_renderer,
-                b2->pos - 0.5f * b2->dim,
-                b2->dim,
-                color,
-                glm::vec2(0.0),
-                glm::vec2(1.0),
-                b2->pos,
-                b2->rot
-        );
-    }
-    
     end_rendering(&pointer->game_renderer);
     draw(&pointer->game_renderer);
 }
@@ -1041,10 +966,6 @@ void gamespace_update_function(MemoryBlock * gspace_mem){
             pointer->current_ui |= TILE_SELECTION;
         }
     }
-
-    if (is_key_pressed(SDLK_SPACE)){
-        pointer->rotating = !pointer->rotating;
-    }
     
 
     { // camera update
@@ -1060,8 +981,6 @@ void gamespace_update_function(MemoryBlock * gspace_mem){
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    render_collision_test(pointer);
 
     if (pointer->current_ui == 0){
         render_world(pointer);

@@ -1,6 +1,6 @@
 #include "memory.hh"
 
-
+///////////// AREAN BASED PERMANENT ALLOCATOR ///////////////////////////
 
 // TODO: getting offset of the pointer from this type
 size_t get_alignment_offset(void * ptr, size_t size, size_t alignment){

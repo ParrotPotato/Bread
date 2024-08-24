@@ -3,14 +3,14 @@
 
 #include <glm/glm.hpp>
 
-
-struct SimpleCollider{
+struct BoxCollider{
     glm::vec2 pos;
     glm::vec2 dim;
     glm::vec2 center;
-    float rotation;
+    float rot;
 };
 
-bool check_collision(SimpleCollider * a, SimpleCollider * b);
+
+bool check_collision(BoxCollider * b1, BoxCollider * b2);
 
 #endif

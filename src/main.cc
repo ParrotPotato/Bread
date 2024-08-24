@@ -80,8 +80,9 @@ int reload_library(GamespaceLibrary * lib){
     return 0;
 }
 
-int main(int argc, char ** argv) {
 
+int main(int argc, char ** argv) {
+            
     platform_init("main window", 1200, 900, SDL_WINDOW_OPENGL);
 
     GamespaceLibrary lib = {0};

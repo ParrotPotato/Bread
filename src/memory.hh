@@ -20,6 +20,7 @@ struct MemoryBlock{
     size_t size;
 };
 
+
 struct MemoryArena{
     void * ptr;
     size_t size;
@@ -29,7 +30,9 @@ struct MemoryArena{
 size_t get_alignment_offset(void * ptr, size_t size, size_t alignment);
 void * get_alignment_pointer(void * ptr, size_t size, size_t alignment);
 
-void * push_value_to_arena(MemoryArena * arena, size_t size, size_t  alignment);
+void * push_value_to_arena(MemoryArena * arena, size_t size, size_t alignment);
+void * pop_value_from_arena(MemoryArena *arena, size_t size, size_t alignment);
+
 void reset_arena_to_zero(MemoryArena * arena);
 
 #endif

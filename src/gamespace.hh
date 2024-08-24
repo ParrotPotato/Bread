@@ -6,6 +6,8 @@
 
 #include "memory.hh"
 
+#include "physics.hh"
+
 struct Renderer2D {
     float * mem_vertex_buffer = 0;
     float * mem_color_buffer = 0;
@@ -87,7 +89,6 @@ struct Camera2D {
     glm::vec2 position;
 };
 
-
 #define TILE_PLACEMENT    1 << 0
 #define TILE_SELECTION    1 << 1
 
@@ -111,8 +112,16 @@ struct GameMemory{
     float yresolution;
 
     int current_ui;
-
     GLint  p1, p2, p3, p4;
+
+    // physics debiging starts
+
+    bool rotating;
+
+    BoxCollider b1;
+    BoxCollider b2;
+
+    // physics debugging ends
 };
 
 typedef void (*gamespace_update_function_t)(MemoryBlock * block);
