@@ -1,0 +1,52 @@
+[
+{
+  "directory": "/home/nitesh/work/projects/active/beta-one/build",
+  "command": "/usr/bin/c++  -Dfullgame_EXPORTS -I/usr/include/SDL2 -I/home/nitesh/work/projects/active/beta-one/./external/imgui -I/home/nitesh/work/projects/active/beta-one/./external/imgui/backends -I/home/nitesh/work/projects/active/beta-one/./external/stb  -g   -std=gnu++17 -o CMakeFiles/fullgame.dir/src/platform.cc.o -c /home/nitesh/work/projects/active/beta-one/src/platform.cc",
+  "file": "/home/nitesh/work/projects/active/beta-one/src/platform.cc"
+},
+{
+  "directory": "/home/nitesh/work/projects/active/beta-one/build",
+  "command": "/usr/bin/c++  -Dfullgame_EXPORTS -I/usr/include/SDL2 -I/home/nitesh/work/projects/active/beta-one/./external/imgui -I/home/nitesh/work/projects/active/beta-one/./external/imgui/backends -I/home/nitesh/work/projects/active/beta-one/./external/stb  -g   -std=gnu++17 -o CMakeFiles/fullgame.dir/src/memory.cc.o -c /home/nitesh/work/projects/active/beta-one/src/memory.cc",
+  "file": "/home/nitesh/work/projects/active/beta-one/src/memory.cc"
+},
+{
+  "directory": "/home/nitesh/work/projects/active/beta-one/build",
+  "command": "/usr/bin/c++  -Dfullgame_EXPORTS -I/usr/include/SDL2 -I/home/nitesh/work/projects/active/beta-one/./external/imgui -I/home/nitesh/work/projects/active/beta-one/./external/imgui/backends -I/home/nitesh/work/projects/active/beta-one/./external/stb  -g   -std=gnu++17 -o CMakeFiles/fullgame.dir/src/main.cc.o -c /home/nitesh/work/projects/active/beta-one/src/main.cc",
+  "file": "/home/nitesh/work/projects/active/beta-one/src/main.cc"
+},
+{
+  "directory": "/home/nitesh/work/projects/active/beta-one/build",
+  "command": "/usr/bin/c++  -Dgamespace_EXPORTS -I/usr/include/SDL2 -I/home/nitesh/work/projects/active/beta-one/./external/imgui -I/home/nitesh/work/projects/active/beta-one/./external/imgui/backends -I/home/nitesh/work/projects/active/beta-one/./external/stb  -g -fPIC   -std=gnu++17 -o CMakeFiles/gamespace.dir/src/gamespace.cc.o -c /home/nitesh/work/projects/active/beta-one/src/gamespace.cc",
+  "file": "/home/nitesh/work/projects/active/beta-one/src/gamespace.cc"
+},
+{
+  "directory": "/home/nitesh/work/projects/active/beta-one/build",
+  "command": "/usr/bin/c++  -Dimgui_EXPORTS -I/usr/include/SDL2 -I/home/nitesh/work/projects/active/beta-one/./external/imgui -I/home/nitesh/work/projects/active/beta-one/./external/imgui/backends  -g -fPIC   -std=gnu++17 -o CMakeFiles/imgui.dir/external/imgui/imgui.cpp.o -c /home/nitesh/work/projects/active/beta-one/external/imgui/imgui.cpp",
+  "file": "/home/nitesh/work/projects/active/beta-one/external/imgui/imgui.cpp"
+},
+{
+  "directory": "/home/nitesh/work/projects/active/beta-one/build",
+  "command": "/usr/bin/c++  -Dimgui_EXPORTS -I/usr/include/SDL2 -I/home/nitesh/work/projects/active/beta-one/./external/imgui -I/home/nitesh/work/projects/active/beta-one/./external/imgui/backends  -g -fPIC   -std=gnu++17 -o CMakeFiles/imgui.dir/external/imgui/imgui_draw.cpp.o -c /home/nitesh/work/projects/active/beta-one/external/imgui/imgui_draw.cpp",
+  "file": "/home/nitesh/work/projects/active/beta-one/external/imgui/imgui_draw.cpp"
+},
+{
+  "directory": "/home/nitesh/work/projects/active/beta-one/build",
+  "command": "/usr/bin/c++  -Dimgui_EXPORTS -I/usr/include/SDL2 -I/home/nitesh/work/projects/active/beta-one/./external/imgui -I/home/nitesh/work/projects/active/beta-one/./external/imgui/backends  -g -fPIC   -std=gnu++17 -o CMakeFiles/imgui.dir/external/imgui/imgui_tables.cpp.o -c /home/nitesh/work/projects/active/beta-one/external/imgui/imgui_tables.cpp",
+  "file": "/home/nitesh/work/projects/active/beta-one/external/imgui/imgui_tables.cpp"
+},
+{
+  "directory": "/home/nitesh/work/projects/active/beta-one/build",
+  "command": "/usr/bin/c++  -Dimgui_EXPORTS -I/usr/include/SDL2 -I/home/nitesh/work/projects/active/beta-one/./external/imgui -I/home/nitesh/work/projects/active/beta-one/./external/imgui/backends  -g -fPIC   -std=gnu++17 -o CMakeFiles/imgui.dir/external/imgui/imgui_widgets.cpp.o -c /home/nitesh/work/projects/active/beta-one/external/imgui/imgui_widgets.cpp",
+  "file": "/home/nitesh/work/projects/active/beta-one/external/imgui/imgui_widgets.cpp"
+},
+{
+  "directory": "/home/nitesh/work/projects/active/beta-one/build",
+  "command": "/usr/bin/c++  -Dimgui_EXPORTS -I/usr/include/SDL2 -I/home/nitesh/work/projects/active/beta-one/./external/imgui -I/home/nitesh/work/projects/active/beta-one/./external/imgui/backends  -g -fPIC   -std=gnu++17 -o CMakeFiles/imgui.dir/external/imgui/backends/imgui_impl_sdl2.cpp.o -c /home/nitesh/work/projects/active/beta-one/external/imgui/backends/imgui_impl_sdl2.cpp",
+  "file": "/home/nitesh/work/projects/active/beta-one/external/imgui/backends/imgui_impl_sdl2.cpp"
+},
+{
+  "directory": "/home/nitesh/work/projects/active/beta-one/build",
+  "command": "/usr/bin/c++  -Dimgui_EXPORTS -I/usr/include/SDL2 -I/home/nitesh/work/projects/active/beta-one/./external/imgui -I/home/nitesh/work/projects/active/beta-one/./external/imgui/backends  -g -fPIC   -std=gnu++17 -o CMakeFiles/imgui.dir/external/imgui/backends/imgui_impl_opengl3.cpp.o -c /home/nitesh/work/projects/active/beta-one/external/imgui/backends/imgui_impl_opengl3.cpp",
+  "file": "/home/nitesh/work/projects/active/beta-one/external/imgui/backends/imgui_impl_opengl3.cpp"
+}
+]
