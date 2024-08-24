@@ -698,7 +698,7 @@ void render_collision_test(GameMemory * pointer){
     b2->center = window_to_world_pos(pointer, mouse_window_pos());
 
     if (pointer->rotating){
-        b2->rot = 2 * 3.14 * get_ticks_since_start() / 1000;
+        b2->rot = 0.5 * 3.14 * get_ticks_since_start() / 1000;
     }
 
     

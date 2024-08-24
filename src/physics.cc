@@ -8,16 +8,6 @@
 #include <vector>
 #include <unordered_set>
 
-#include <iostream>
-
-// struct BoxCollider{
-//     glm::vec2 pos;
-//     glm::vec2 dim;
-//     glm::vec2 center;
-//     float rot;
-// };
-// 
-
 struct HashGlmVec2 {
     size_t operator () (const glm::vec2 & a) const {
         unsigned int xhashint = *((unsigned int *)(&a.x));
@@ -32,7 +22,7 @@ struct EqualGlmVec2 {
     }
 };
 
-bool check_collision_separating_axis_theorem(const std::vector<glm::vec2> a, const std::vector<glm::vec2> b){
+bool check_collision_separating_axis_theorem(const std::vector<glm::vec2> & a, const std::vector<glm::vec2> & b){
     std::unordered_set<glm::vec2, HashGlmVec2, EqualGlmVec2> axises;
 
     for(unsigned int i = 0; i < a.size(); i++){
@@ -47,7 +37,6 @@ bool check_collision_separating_axis_theorem(const std::vector<glm::vec2> a, con
 
 
     for(const glm::vec2 axis : axises){
-        ImGui::Begin("Seperating axis theorem");
 
         float amin = 10e10;
         float amax = -10e10;
@@ -63,18 +52,11 @@ bool check_collision_separating_axis_theorem(const std::vector<glm::vec2> a, con
             bmin = bmin > dot ? dot : bmin;
             bmax = dot > bmax ? dot : bmax;
         }
-        std::cout << "[1] amax > bmax && bmax > amin " << ((amax > bmax && bmax > amin) ? "true" :"false") << "\n";
-        std::cout << "[2] amax > bmin && bmin > amin " << ((amax > bmin && bmin > amin) ? "true" :"false") << "\n";
-        std::cout << "[3] bmax > amax && amax > bmin " << ((bmax > amax && amax > bmin) ? "true" :"false") << "\n";
 
-        ImGui::Text("amax : %f, amin : %f", amax, amin);
-        ImGui::Text("bmax : %f, bmin : %f", bmax, bmin);
-
-        ImGui::End();
         if ( 
-                (amax > bmax && bmax > amin) == false 
-                && (amax > bmin && bmin > amin) == false 
-                && (bmax > amax && amax > bmin) == false
+                (amax >= bmax && bmax >= amin) == false 
+                && (amax >= bmin && bmin >= amin) == false 
+                && (bmax >= amax && amax >= bmin) == false
            )
             return false;
     }
@@ -108,12 +90,9 @@ bool check_collision(BoxCollider * a, BoxCollider * b){
         bpoints[3] = glm::vec2(b->pos.x + b->dim.x * 0.5, b->pos.y - b->dim.y * 0.5);
         glm::mat4 rotation_matrix = glm::rotate(glm::mat4(1.0f), b->rot, glm::vec3(0.0f, 0.0f, 1.0f));
 
-        ImGui::Begin("Bpoints data");
         for(unsigned int i = 0; i < 4 ; i++){
             bpoints[i] = b->center + glm::vec2(rotation_matrix *  glm::vec4((bpoints[i] - b->center), 0.0, 1.0));
-            ImGui::Text("points [%d] = x: %f, y: %f", i, bpoints[i].x, bpoints[i].y);
         }
-        ImGui::End();
 
     }
 
