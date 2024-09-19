@@ -692,7 +692,37 @@ void gamespace_init_function(MemoryBlock * gspace_mem){
     colliders[2].pos =  delta + glm::vec2(65.0, 90.0);
     colliders[2].dim =  glm::vec2(15.0, 15.0);
     colliders[2].center = colliders[2].pos;
-    colliders[2].velocity = glm::vec2(0.0, -4.0);
+    colliders[2].velocity = glm::vec2(0.0, -10.0);
+    colliders[2].properties = GRAVITY;
+
+    game_mem->collider_count = 3;
+    
+    game_mem->player.box_collider_idx = 2;
+
+    reset_stack_allocator(&game_mem->temporary);
+}
+
+void reset_game_entities(GameMemory * game_mem){
+    BoxCollider * colliders = game_mem->colliders;
+
+    glm::vec2 delta = glm::vec2(game_mem->xresolution * 0.5 - 70, game_mem->yresolution * 0.5 - 70);
+
+    colliders[0].pos =  delta + glm::vec2(50.0, 50.0);
+    colliders[0].dim =  glm::vec2(20.0, 20.0);
+    colliders[0].center = colliders[0].pos;
+    colliders[0].velocity = glm::vec2(0.0, 0.0);
+    colliders[0].properties = STATIC;
+
+    colliders[1].pos =  delta + glm::vec2(80.0, 50.0);
+    colliders[1].dim =  glm::vec2(20.0, 20.0);
+    colliders[1].center = colliders[1].pos;
+    colliders[1].velocity = glm::vec2(0.0, 0.0);
+    colliders[1].properties = STATIC;
+
+    colliders[2].pos =  delta + glm::vec2(65.0, 90.0);
+    colliders[2].dim =  glm::vec2(15.0, 15.0);
+    colliders[2].center = colliders[2].pos;
+    colliders[2].velocity = glm::vec2(0.0, -10.0);
     colliders[2].properties = GRAVITY;
 
     game_mem->collider_count = 3;
@@ -847,7 +877,7 @@ void update_physics(GameMemory * pointer, float delta_time){
 
             ImGui::End();
 
-            collision_list[i] = j;
+            collision_list[collision_count] = j;
             collision_count += 1;
         }
 
@@ -858,7 +888,8 @@ void update_physics(GameMemory * pointer, float delta_time){
             current->pos = current->pos + movement;
             ImGui::Text("pos : %f, %f", current->pos.x, current->pos.y);
         } else {
-            // note: getting closest block for intersection
+
+
             ImGui::Text("collided with index %d", collision_list[0]);
 
         }
@@ -1130,6 +1161,8 @@ void render_tile_placement_gui(GameMemory * pointer){
 }
 
 
+
+
 void render_tile_selection_gui(GameMemory * pointer){
     // setup
     GLint projectionLoadtion = glGetUniformLocation(pointer->p4,  "projection");
@@ -1229,6 +1262,10 @@ extern "C"
 void gamespace_update_function(MemoryBlock * gspace_mem){
     
     GameMemory * pointer = GET_ALIGNMENT_POINTER(gspace_mem->ptr, GameMemory);
+
+    if (is_key_down(SDLK_i)){
+        reset_game_entities(pointer);
+    }
 
     if (pointer->previous_ticks == 0){
         pointer->previous_ticks = get_ticks_since_start();
