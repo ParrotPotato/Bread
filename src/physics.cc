@@ -36,6 +36,9 @@ bool check_collision_separating_axis_theorem(const std::vector<glm::vec2> & a, c
     }
 
 
+    float minimum_overlap = 10e10;
+    glm::vec2 minimum_seperation_axis = glm::vec2(0.0);
+
     for(const glm::vec2 axis : axises){
 
         float amin = 10e10;
@@ -59,13 +62,32 @@ bool check_collision_separating_axis_theorem(const std::vector<glm::vec2> & a, c
                 && (bmax >= amax && amax >= bmin) == false
            )
             return false;
+
     }
+
+    for(const glm::vec2 axis: axises){
+        float amin = 10e10;
+        float amax = -10e10;
+        float bmin = 10e10;
+        float bmax = -10e10;
+        for(const glm::vec2 point: a){
+            float dot = glm::dot(axis, point);
+            amin = amin > dot ? dot : amin;
+            amax = dot > amax ? dot : amax;
+        }
+        for(const glm::vec2 point: b){
+            float dot = glm::dot(axis, point);
+            bmin = bmin > dot ? dot : bmin;
+            bmax = dot > bmax ? dot : bmax;
+        }
+    }
+
     return true;
 }
 
 // @note: this is an expensive function which performs a sa
 
-bool check_collision(BoxCollider * a, BoxCollider * b){
+bool check_collision_via_sat(BoxCollider * a, BoxCollider * b){
 
     // @notes: this is a heap allocation
     std::vector<glm::vec2> apoints(4);
@@ -100,4 +122,6 @@ bool check_collision(BoxCollider * a, BoxCollider * b){
 
     return result;
 }
+
+// @note: this function is a very course grain collision algorithm
 

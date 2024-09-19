@@ -115,7 +115,7 @@ struct GameMemory{
     SpriteSheet sprite_sheet;
 
     MemoryArena permanent;
-    MemoryStackAllocator temporary;
+    MemoryArena temporary;
 
     float xresolution;
     float yresolution;
@@ -142,7 +142,10 @@ struct GameMemory{
     BoxCollider colliders[MAX_COLLIDER_COUNT];
     unsigned int collider_count;
 
+
+
     unsigned int previous_ticks;
+
 };
 
 typedef void (*gamespace_update_function_t)(MemoryBlock * block);

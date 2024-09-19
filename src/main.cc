@@ -1,5 +1,3 @@
-#include <iostream>
-
 #include <SDL2/SDL.h>
 
 #include <GL/glew.h>
@@ -82,7 +80,32 @@ int reload_library(GamespaceLibrary * lib){
 
 
 int main(int argc, char ** argv) {
+
+
+    printf("Memory stack allocator test starts\n");
+
+    MemoryStackAllocator sa =  {};
+    void * buffer = 0;
+    init_stack_allocator(&sa, buffer, 10);
+    void * first = push_in_stack(&sa, 2, 1);
+    assert(first == (void *) 0x00);
+    void * second = push_in_stack(&sa, 4, 4);
+    assert(second == (void *) 0x04);
+    void * third = push_in_stack(&sa, 2, 1);
+    assert(third == (void *) 0x08);
+    pop_from_stack(&sa);
+    void * fourth = push_in_stack(&sa, 3, 1);
+    assert(fourth == nullptr);
+
+    printf("Memory stack allocator test ends\n");
+
+
+    printf("Memory arena allocator test starts\n");
+    // @todo(nitesh) : adds the arena based allocator tests in herre as well 
+    printf("Memory arena allocator test ends\n");
+
             
+    // end mem test
     platform_init("main window", 1200, 900, SDL_WINDOW_OPENGL);
 
     GamespaceLibrary lib = {0};
@@ -100,8 +123,9 @@ int main(int argc, char ** argv) {
     bool bvalue = false;
     glClearDepth(1.0f);
 
+    unsigned int b = get_ticks_since_start();
+    unsigned int delta = 0;
     while(is_quit_requested() == false){
-
         platform_update_input_state();
         platform_begin_rendering();
 
@@ -109,6 +133,11 @@ int main(int argc, char ** argv) {
 
         platform_end_rendering();
         if (is_key_pressed(SDLK_r)){
+            unsigned int ticks   = get_ticks_since_start();
+            unsigned int seconds  = ticks/1000;
+            unsigned int minutes = seconds/60;
+            unsigned int hours   = minutes/60;
+            printf("[%02u:%02u:%02u] reloading library instance\n", hours, minutes, seconds);
             reload_library(&lib);
         }
     }

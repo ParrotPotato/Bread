@@ -27,9 +27,6 @@
  * 11.   Sprite sample animation          - todo
  * 12.   Proper memory boundary tests     - todo
  * 13.   (Platform) Audio system          - todo
- * 14.   Improve rendering code, 
- *          - cleanup rendering setup and 
- *            render flush code
  *
  * Maintainace Tasks :
  * 1. Evaluate the effects of coordinate system 
@@ -177,22 +174,6 @@ bool same_sign(T x, T y){
     return (x / absolute(x) == y / absolute(y));
 }
 
-template<typename T>
-T max_if_positive(T x, T y){
-    if (x < 0.0f) return y;
-    if (y < 0.0f) return x;
-    return std::max(x, y);
-}
-
-template<typename T>
-T min_if_positive(T x, T y){
-    T result = 0.0;
-    if (x < 0.0f) result = y;
-    else if (y < 0.0f) result = x;
-    else  result = std::min(x, y);
-    return result;
-}
-
 // 
 
 int compile_shader(GameMemory * memory, char * shader_buffer, GLenum type){
@@ -204,14 +185,13 @@ int compile_shader(GameMemory * memory, char * shader_buffer, GLenum type){
     if (status == GL_FALSE){
         int error_log_length = 0;
         glGetShaderiv(shader_handle, GL_INFO_LOG_LENGTH, &error_log_length);
-        char * error_log = PUSH_IN_STACK(&memory->temporary, char, error_log_length + 1);
+        char * error_log = ALLOCATE_ARRAY(&memory->temporary, char, error_log_length + 1);
         glGetShaderInfoLog(shader_handle, error_log_length, &error_log_length, error_log);
         printf("shader compilation error\n");
         printf("%s\n", error_log);
         free(error_log);
         glDeleteShader(shader_handle);
         shader_handle = 0;
-        POP_FROM_STACK(&memory->temporary);
     }
     return shader_handle;
 }
@@ -226,7 +206,7 @@ int link_program(GameMemory * memory, int * shader_list, int shader_count){
     {
         int error_log_length = 0;
         glGetProgramiv(program, GL_INFO_LOG_LENGTH, &error_log_length);
-        char * error_log = PUSH_IN_STACK(&memory->temporary, char, error_log_length  + 1);
+        char * error_log = ALLOCATE_ARRAY(&memory->temporary, char, error_log_length  + 1);
         glGetProgramInfoLog(program, error_log_length, &error_log_length, error_log);
         printf("program linking failed\n");
         printf("%s\n", error_log);
@@ -234,7 +214,6 @@ int link_program(GameMemory * memory, int * shader_list, int shader_count){
         for(int i = 0; i < shader_count ; i++) glDetachShader(program, shader_list[i]);
         glDeleteProgram(program);
         program = 0;
-        POP_FROM_STACK(&memory->temporary);
     }
     return program;
 }
@@ -551,11 +530,9 @@ void gamespace_init_function(MemoryBlock * gspace_mem){
     game_mem->permanent.size =  remaining_size - remaining_size / 2;
     game_mem->permanent.cur = 0;
 
-    init_stack_allocator(
-            &game_mem->temporary, 
-            (char *) game_mem + sizeof(GameMemory) + game_mem->permanent.size,
-            remaining_size / 2
-            );
+    game_mem->temporary.ptr = (char *) game_mem + sizeof(GameMemory) + game_mem->permanent.size;
+    game_mem->temporary.size = remaining_size / 2;
+    game_mem->temporary.cur = 0;
 
     // Resource loading
     game_mem->game_renderer = {0};
@@ -668,6 +645,7 @@ void gamespace_init_function(MemoryBlock * gspace_mem){
 
     game_mem->rotating = false;
 
+
     // setting up game animation 
 
     // we want to add 2 blocks which are 100 unit away 
@@ -699,7 +677,7 @@ void gamespace_init_function(MemoryBlock * gspace_mem){
     
     game_mem->player.box_collider_idx = 2;
 
-    reset_stack_allocator(&game_mem->temporary);
+    RESET_ARENA(&game_mem->temporary);
 }
 
 glm::vec2 window_to_world_pos(GameMemory * pointer, glm::vec2 pos){
@@ -757,6 +735,7 @@ void render_world(GameMemory * pointer){
 }
 
 
+
 #define FLOAT_POS_INFINITY          10e30
 #define FLOAT_NEG_INFINITY         -10e30
 
@@ -765,27 +744,13 @@ void update_physics(GameMemory * pointer, float delta_time){
     // checking and updating collision logic
     for(unsigned int i = 0 ; i < pointer->collider_count ; i++){
         BoxCollider * current = pointer->colliders + i;
-
         glm::vec2 movement = delta_time * current->velocity;
 
-        // @note: there seems to be a bug in the STACK based allocator
-        // resulting in a program crashing memory leak 
-
         if (current->properties == STATIC) continue;
-
-        unsigned int * collision_list
-            = PUSH_IN_STACK(
-                    &pointer->temporary, 
-                    unsigned int, 
-                    pointer->collider_count - 1
-                    );
-        unsigned int collision_count = 0;
 
         for(unsigned int j = 0  ; i < pointer->collider_count ; i++){
             if (j == i) continue;
             ImGui::Begin("Collision detection debug");
-
-            ImGui::Text("For target index %u", j);
             BoxCollider target = pointer->colliders[j];
             target.dim = target.dim +  current->dim;
 
@@ -794,6 +759,7 @@ void update_physics(GameMemory * pointer, float delta_time){
             if (movement.y == 0.0f){
                 t_near.y = ((target.pos.y - (0.5 * target.dim.y)) - current->pos.y) > 0 ? FLOAT_POS_INFINITY : FLOAT_NEG_INFINITY;
                 t_far.y = ((target.pos.y + (0.5 * target.dim.y)) - current->pos.y) > 0 ? FLOAT_POS_INFINITY : FLOAT_NEG_INFINITY;
+                
             }  else {
                 ImGui::Text("Initializing y with default condition");
                 t_near.y = ((target.pos.y - (0.5f * target.dim.y)) - current->pos.y) / movement.y;
@@ -808,63 +774,29 @@ void update_physics(GameMemory * pointer, float delta_time){
                 t_far.x = ((target.pos.x + (0.5f * target.dim.x)) - current->pos.x) / movement.x;
             }
 
-            ImGui::Text("right after initialization");
-            ImGui::Text("t_near : %f, %f", t_near.x, t_near.y);
-            ImGui::Text("t_far  : %f, %f", t_far.x, t_far.y);
-
             if(t_near.x > t_far.x) std::swap(t_near.x, t_far.x);
             if(t_near.y > t_far.y) std::swap(t_near.y, t_far.y);
 
-
             // cannot collide update position
             if(t_near.x > t_far.y || t_near.y > t_far.x) {
-                ImGui::End();
-                continue;
+                current->pos = current->pos + movement;
             };
 
-            float max_col_time = 0.0f;
-            float min_col_time = 0.0f;
 
-            ImGui::Text("After swapping");
-            ImGui::Text("t_near : %f, %f", t_near.x, t_near.y);
-            ImGui::Text("t_far  : %f, %f", t_far.x, t_far.y);
-
-            max_col_time = min_if_positive(t_far.x, t_far.y);
-            min_col_time = min_if_positive(t_near.x, t_near.y);
-
-
-            ImGui::Text("Instance value : %f %f", max_col_time, min_col_time);
-
-
-            ImGui::Text("max_col_time %f", max_col_time);
-            ImGui::Text("min_col_time %f", min_col_time);
+            float max_col_time = std::max(t_far.x, t_far.y);
+            float min_col_time = std::min(t_near.x, t_near.y);
             
             // can collide but not in this time step: update velocity
             if (max_col_time < 0.0f || min_col_time > 1.0f) {
-                ImGui::End();
-                continue;
+                current->pos = current->pos +  movement;
             }; 
 
+
+            ImGui::Text("index : %d", j);
+            ImGui::Text("t_near : %f, %f", t_near.x, t_near.y);
+            ImGui::Text("t_far : %f, %f", t_far.x, t_far.y);
             ImGui::End();
-
-            collision_list[i] = j;
-            collision_count += 1;
         }
-
-
-        ImGui::Begin("Post collision check information");
-        ImGui::Text("collision count : %d", collision_count);
-        if(collision_count == 0){
-            current->pos = current->pos + movement;
-            ImGui::Text("pos : %f, %f", current->pos.x, current->pos.y);
-        } else {
-            // note: getting closest block for intersection
-            ImGui::Text("collided with index %d", collision_list[0]);
-
-        }
-        ImGui::End();
-
-        POP_FROM_STACK(&pointer->temporary);
     }
 }
 
@@ -970,6 +902,16 @@ void render_game_elements(GameMemory * pointer) {
                 box->rot);
     }
 
+//     render_quad_rect_tex_rot(
+//             &pointer->game_renderer,
+//             ground->pos - 0.5f * ground->dim,
+//             ground->dim,
+//             glm::vec4(1.0, 1.0, 1.0, 1.0),
+//             glm::vec2(0),
+//             glm::vec2(1),
+//             ground->center,
+//             ground->rot);
+// 
     
     end_rendering(&pointer->game_renderer);
     draw(&pointer->game_renderer);
@@ -1227,8 +1169,11 @@ void render_tile_selection_gui(GameMemory * pointer){
 
 extern "C"
 void gamespace_update_function(MemoryBlock * gspace_mem){
+
+    
     
     GameMemory * pointer = GET_ALIGNMENT_POINTER(gspace_mem->ptr, GameMemory);
+    RESET_ARENA(&pointer->temporary);
 
     if (pointer->previous_ticks == 0){
         pointer->previous_ticks = get_ticks_since_start();
