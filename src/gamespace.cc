@@ -811,7 +811,8 @@ void update_physics(GameMemory * pointer, float delta_time){
                     );
         unsigned int collision_count = 0;
 
-        for(unsigned int j = 0  ; i < pointer->collider_count ; i++){
+        for(unsigned int j = 0  ; j < pointer->collider_count ; j++){
+
             if (j == i) continue;
             ImGui::Begin("Collision detection debug");
 
@@ -848,6 +849,7 @@ void update_physics(GameMemory * pointer, float delta_time){
 
             // cannot collide update position
             if(t_near.x > t_far.y || t_near.y > t_far.x) {
+                ImGui::Text("not colliding with %d because never going to intersect ", j);
                 ImGui::End();
                 continue;
             };
@@ -871,6 +873,7 @@ void update_physics(GameMemory * pointer, float delta_time){
             
             // can collide but not in this time step: update velocity
             if (max_col_time < 0.0f || min_col_time > 1.0f) {
+                ImGui::Text("not colliding with %d because not intersecting right now", j);
                 ImGui::End();
                 continue;
             }; 
@@ -881,17 +884,13 @@ void update_physics(GameMemory * pointer, float delta_time){
             collision_count += 1;
         }
 
-
         ImGui::Begin("Post collision check information");
         ImGui::Text("collision count : %d", collision_count);
         if(collision_count == 0){
             current->pos = current->pos + movement;
             ImGui::Text("pos : %f, %f", current->pos.x, current->pos.y);
         } else {
-
-
             ImGui::Text("collided with index %d", collision_list[0]);
-
         }
         ImGui::End();
 
