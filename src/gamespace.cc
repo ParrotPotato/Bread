@@ -511,7 +511,13 @@ void end_rendering(Renderer2D * renderer){
 }
 
 
-void draw(Renderer2D * renderer){
+void draw(Renderer2D * renderer, GLint program, const glm::mat4 & matrix, const Texture2D & texture){
+    glUseProgram(program);
+    GLint projectionLocation = glGetUniformLocation(program, "projection");
+    glUniformMatrix4fv(projectionLocation, 1, GL_FALSE, glm::value_ptr(matrix));
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture.id);
+    glUniform1i(glGetUniformLocation(program, "spriteTexture"), 0);
     glBindVertexArray(renderer->vao);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderer->ibo);
     glDrawElements(GL_TRIANGLES, renderer->added_indices, GL_UNSIGNED_INT, 0);
@@ -605,6 +611,7 @@ void gamespace_init_function(MemoryBlock * gspace_mem){
     }
 
     printf("texture loaded: width = %u, height %u\n", sprite_sheet_texture.width, sprite_sheet_texture.height);
+
 
     
     game_mem->tile_texture  = sprite_sheet_texture;
@@ -738,13 +745,13 @@ void render_world(GameMemory * pointer){
     unsigned int sprite_x_max = editor->sprite->x_max;
     unsigned int sprite_y_max = editor->sprite->y_max;
 
-    GLint projectionLoadtion = glGetUniformLocation(pointer->p4,  "projection");
-    glUseProgram(pointer->p4);
-    glUniformMatrix4fv(projectionLoadtion, 1, GL_FALSE, glm::value_ptr(pointer->camera.projection));
+    // GLint projectionLoadtion = glGetUniformLocation(pointer->p4,  "projection");
+    // glUseProgram(pointer->p4);
+    // glUniformMatrix4fv(projectionLoadtion, 1, GL_FALSE, glm::value_ptr(pointer->camera.projection));
     // rendering the world 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, pointer->tile_texture.id);
-    glUniform1i(glGetUniformLocation(pointer->p4, "spriteTexture"), 0);
+    // glActiveTexture(GL_TEXTURE0);
+    // glBindTexture(GL_TEXTURE_2D, pointer->tile_texture.id);
+    // glUniform1i(glGetUniformLocation(pointer->p4, "spriteTexture"), 0);
     start_rendering(&pointer->game_renderer);
     for(unsigned int i = 0 ; i < world->space_width * world->space_height ; i++){
         if (world->static_indices[i] == -1) continue;
@@ -770,7 +777,7 @@ void render_world(GameMemory * pointer){
                 target_uv_size);
     }
     end_rendering(&pointer->game_renderer);
-    draw(&pointer->game_renderer);
+    draw(&pointer->game_renderer, pointer->p4, pointer->camera.projection, pointer->tile_texture);
 }
 
 
@@ -969,16 +976,16 @@ void render_collision_test(GameMemory * pointer){
 
     // render the positions
 
-    GLint projectionLoadtion = glGetUniformLocation(pointer->p4,  "projection");
-    glUseProgram(pointer->p4);
+    // GLint projectionLoadtion = glGetUniformLocation(pointer->p4,  "projection");
+    // glUseProgram(pointer->p4);
 
-    glUniformMatrix4fv(projectionLoadtion, 1, GL_FALSE, glm::value_ptr(pointer->camera.projection));
+    // glUniformMatrix4fv(projectionLoadtion, 1, GL_FALSE, glm::value_ptr(pointer->camera.projection));
 
     // rendering the world 
 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, pointer->plain_texture.id);
-    glUniform1i(glGetUniformLocation(pointer->p4, "spriteTexture"), 0);
+    // glActiveTexture(GL_TEXTURE0);
+    // glBindTexture(GL_TEXTURE_2D, pointer->plain_texture.id);
+    // glUniform1i(glGetUniformLocation(pointer->p4, "spriteTexture"), 0);
 
     start_rendering(&pointer->game_renderer);
 
@@ -1013,7 +1020,7 @@ void render_collision_test(GameMemory * pointer){
     }
     
     end_rendering(&pointer->game_renderer);
-    draw(&pointer->game_renderer);
+    draw(&pointer->game_renderer, pointer->p4, pointer->camera.projection, pointer->plain_texture);
 }
 
 
@@ -1023,15 +1030,7 @@ void render_game_elements(GameMemory * pointer) {
 
     // rendering code :: this needs improvement 
 
-    GLint projectionLoadtion = glGetUniformLocation(pointer->p4,  "projection");
-    glUseProgram(pointer->p4);
-    glUniformMatrix4fv(projectionLoadtion, 1, GL_FALSE, glm::value_ptr(pointer->camera.projection));
-    // rendering the world 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, pointer->plain_texture.id);
-    glUniform1i(glGetUniformLocation(pointer->p4, "spriteTexture"), 0);
     start_rendering(&pointer->game_renderer);
-    
 
     for(unsigned int i = 0 ; i < pointer->collider_count; i++){
 
@@ -1056,7 +1055,7 @@ void render_game_elements(GameMemory * pointer) {
 
     
     end_rendering(&pointer->game_renderer);
-    draw(&pointer->game_renderer);
+    draw(&pointer->game_renderer, pointer->p4, pointer->camera.projection, pointer->plain_texture);
 }
 
 
@@ -1131,18 +1130,6 @@ void render_tile_placement_gui(GameMemory * pointer){
     ImGui::End();
 
     // rendering
-
-    GLint projectionLoadtion = glGetUniformLocation(pointer->p4,  "projection");
-    glUseProgram(pointer->p4);
-
-    glUniformMatrix4fv(projectionLoadtion, 1, GL_FALSE, glm::value_ptr(pointer->camera.projection));
-
-    // rendering the world 
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, pointer->plain_texture.id);
-    glUniform1i(glGetUniformLocation(pointer->p4, "spriteTexture"), 0);
-
     start_rendering(&pointer->game_renderer);
     
     for(unsigned int i = 0 ; i < world->space_width * world->space_height ; i++){
@@ -1161,12 +1148,12 @@ void render_tile_placement_gui(GameMemory * pointer){
                 glm::vec2(0.0), glm::vec2(1.0));
     }
     end_rendering(&pointer->game_renderer);
-    draw(&pointer->game_renderer);
+    draw(&pointer->game_renderer, pointer->p4, pointer->camera.projection, pointer->plain_texture);
 
 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, editor->sprite->texture->id);
-    glUniform1i(glGetUniformLocation(pointer->p4, "spriteTexture"), 0);
+    // glActiveTexture(GL_TEXTURE0);
+    // glBindTexture(GL_TEXTURE_2D, editor->sprite->texture->id);
+    // glUniform1i(glGetUniformLocation(pointer->p4, "spriteTexture"), 0);
 
     start_rendering(&pointer->game_renderer);
 
@@ -1210,7 +1197,7 @@ void render_tile_placement_gui(GameMemory * pointer){
             target_uv_dim
             );
     end_rendering(&pointer->game_renderer);
-    draw(&pointer->game_renderer);
+    draw(&pointer->game_renderer, pointer->p4, pointer->camera.projection, *pointer->level_editor.sprite->texture);
 }
 
 
@@ -1218,7 +1205,7 @@ void render_tile_placement_gui(GameMemory * pointer){
 
 void render_tile_selection_gui(GameMemory * pointer){
     // setup
-    GLint projectionLoadtion = glGetUniformLocation(pointer->p4,  "projection");
+    // GLint projectionLoadtion = glGetUniformLocation(pointer->p4,  "projection");
     LevelEditor * editor = &pointer->level_editor;
 
     glm::vec2 tile_render_size = glm::vec2(pointer->yresolution * 0.5);
@@ -1258,13 +1245,13 @@ void render_tile_selection_gui(GameMemory * pointer){
     glm::vec2 selected_sheet_size = glm::vec2(tile_render_size.x / x_max, tile_render_size.y / y_max);
 
     // render
-    glUseProgram(pointer->p4);
+    // glUseProgram(pointer->p4);
 
-    glUniformMatrix4fv(projectionLoadtion, 1, GL_FALSE, glm::value_ptr(pointer->static_ortho_projection));
+    // glUniformMatrix4fv(projectionLoadtion, 1, GL_FALSE, glm::value_ptr(pointer->static_ortho_projection));
 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, pointer->plain_texture.id);
-    glUniform1i(glGetUniformLocation(pointer->p4, "spriteTexture"), 0);
+    // glActiveTexture(GL_TEXTURE0);
+    // glBindTexture(GL_TEXTURE_2D, pointer->plain_texture.id);
+    // glUniform1i(glGetUniformLocation(pointer->p4, "spriteTexture"), 0);
 
     // this does not require texture to render stuff
     start_rendering(&pointer->static_ui_renderer);
@@ -1277,11 +1264,11 @@ void render_tile_selection_gui(GameMemory * pointer){
             glm::vec2(1.0f)
             ); // because teh default uv coordinated are 0 0 
     end_rendering(&pointer->static_ui_renderer);
-    draw(&pointer->static_ui_renderer);
+    draw(&pointer->static_ui_renderer, pointer->p4, pointer->static_ortho_projection, pointer->plain_texture);
 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, pointer->tile_texture.id);
-    glUniform1i(glGetUniformLocation(pointer->p4, "spriteTexture"), 0);
+    // glActiveTexture(GL_TEXTURE0);
+    // glBindTexture(GL_TEXTURE_2D, pointer->tile_texture.id);
+    // glUniform1i(glGetUniformLocation(pointer->p4, "spriteTexture"), 0);
 
     start_rendering(&pointer->static_ui_renderer);
     render_quad_rect_tex(
@@ -1292,11 +1279,11 @@ void render_tile_selection_gui(GameMemory * pointer){
             glm::vec2(0.0), glm::vec2(1.0f)
             );
     end_rendering(&pointer->static_ui_renderer);
-    draw(&pointer->static_ui_renderer);
+    draw(&pointer->static_ui_renderer, pointer->p4, pointer->static_ortho_projection, pointer->tile_texture);
 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, pointer->plain_texture.id);
-    glUniform1i(glGetUniformLocation(pointer->p4, "spriteTexture"), 0);
+    // glActiveTexture(GL_TEXTURE0);
+    // glBindTexture(GL_TEXTURE_2D, pointer->plain_texture.id);
+    // glUniform1i(glGetUniformLocation(pointer->p4, "spriteTexture"), 0);
 
     start_rendering(&pointer->static_ui_renderer);
     
@@ -1308,7 +1295,7 @@ void render_tile_selection_gui(GameMemory * pointer){
             glm::vec2(0.0), glm::vec2(1.0)
             );
     end_rendering(&pointer->static_ui_renderer);
-    draw(&pointer->static_ui_renderer);
+    draw(&pointer->static_ui_renderer, pointer->p4, pointer->static_ortho_projection, pointer->plain_texture);
 }
 
 extern "C"
@@ -1380,6 +1367,8 @@ void gamespace_update_function(MemoryBlock * gspace_mem){
 
     // render_collision_test(pointer);
     render_game_elements(pointer);
+
+
 
     if (pointer->current_ui == 0){
         render_world(pointer);
