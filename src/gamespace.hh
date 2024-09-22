@@ -33,6 +33,7 @@ struct Renderer2D {
     GLuint vao = 0;
 
     int state = 0;
+
 };
 
 struct Texture2D{

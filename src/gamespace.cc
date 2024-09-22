@@ -532,6 +532,7 @@ void generate_camera_matrix(Camera2D * camera){
     camera->inverse = glm::scale(inverse_translation, scale_factor);
 }
 
+void reset_game_entities(GameMemory * game_mem);
 extern "C"    
 void gamespace_init_function(MemoryBlock * gspace_mem){
 
@@ -673,33 +674,7 @@ void gamespace_init_function(MemoryBlock * gspace_mem){
     // we want to add 2 blocks which are 100 unit away 
     // and a player box which is 150 in size
 
-    BoxCollider * colliders = game_mem->colliders;
-
-    glm::vec2 delta = glm::vec2(xresolution * 0.5 - 70, yresolution * 0.5 - 70);
-
-    colliders[0].pos =  delta + glm::vec2(50.0, 50.0);
-    colliders[0].dim =  glm::vec2(20.0, 20.0);
-    colliders[0].center = colliders[0].pos;
-    colliders[0].velocity = glm::vec2(0.0, 0.0);
-    colliders[0].properties = STATIC;
-
-    colliders[1].pos =  delta + glm::vec2(80.0, 50.0);
-    colliders[1].dim =  glm::vec2(20.0, 20.0);
-    colliders[1].center = colliders[1].pos;
-    colliders[1].velocity = glm::vec2(0.0, 0.0);
-    colliders[1].properties = STATIC;
-
-    colliders[2].pos =  delta + glm::vec2(65.0, 90.0);
-    colliders[2].dim =  glm::vec2(15.0, 15.0);
-    colliders[2].center = colliders[2].pos;
-    colliders[2].velocity = glm::vec2(0.0, -10.0);
-    colliders[2].properties = GRAVITY;
-
-    game_mem->collider_count = 3;
-    
-    game_mem->player.box_collider_idx = 2;
-
-    reset_stack_allocator(&game_mem->temporary);
+    reset_game_entities(game_mem);
 }
 
 void reset_game_entities(GameMemory * game_mem){
@@ -711,21 +686,33 @@ void reset_game_entities(GameMemory * game_mem){
     colliders[0].dim =  glm::vec2(20.0, 20.0);
     colliders[0].center = colliders[0].pos;
     colliders[0].velocity = glm::vec2(0.0, 0.0);
-    colliders[0].properties = STATIC;
+    colliders[0].properties = NONE;
 
     colliders[1].pos =  delta + glm::vec2(80.0, 50.0);
     colliders[1].dim =  glm::vec2(20.0, 20.0);
     colliders[1].center = colliders[1].pos;
     colliders[1].velocity = glm::vec2(0.0, 0.0);
-    colliders[1].properties = STATIC;
+    colliders[1].properties = NONE;
 
     colliders[2].pos =  delta + glm::vec2(65.0, 90.0);
     colliders[2].dim =  glm::vec2(15.0, 15.0);
     colliders[2].center = colliders[2].pos;
-    colliders[2].velocity = glm::vec2(0.0, -10.0);
+    colliders[2].velocity = glm::vec2(-25.0, -15.0);
     colliders[2].properties = GRAVITY;
 
-    game_mem->collider_count = 3;
+    colliders[3].pos =  delta + glm::vec2(110.0, 50.0);
+    colliders[3].dim =  glm::vec2(20.0, 20.0);
+    colliders[3].center = colliders[1].pos;
+    colliders[3].velocity = glm::vec2(0.0, 0.0);
+    colliders[3].properties = STATIC;
+
+    colliders[4].pos =  delta + glm::vec2(20.0, 50.0);
+    colliders[4].dim =  glm::vec2(20.0, 60.0);
+    colliders[4].center = colliders[1].pos;
+    colliders[4].velocity = glm::vec2(0.0, 0.0);
+    colliders[4].properties = STATIC;
+
+    game_mem->collider_count = 5;
     
     game_mem->player.box_collider_idx = 2;
 
@@ -792,28 +779,46 @@ void render_world(GameMemory * pointer){
 
 void update_physics(GameMemory * pointer, float delta_time){
 
+
     // checking and updating collision logic
+
     for(unsigned int i = 0 ; i < pointer->collider_count ; i++){
         BoxCollider * current = pointer->colliders + i;
+
+
+        struct collision_idx_info{
+            unsigned int idx = 0;
+            float closest_distance = FLOAT_POS_INFINITY;
+            glm::vec2 normal = glm::vec2(0.0f);;
+        };
 
         glm::vec2 movement = delta_time * current->velocity;
 
         // @note: there seems to be a bug in the STACK based allocator
         // resulting in a program crashing memory leak 
 
-        if (current->properties == STATIC) continue;
+        if (current->properties != GRAVITY) continue;
 
-        unsigned int * collision_list
+        // @note: for now we are only using this array for collision resolution
+        //        but since we mgith need list of all collision pairs in the future
+        //        I would leave in temp mem array  (collision_list) and later we 
+        //        can abstract it out
+
+        collision_idx_info * collision_list
             = PUSH_IN_STACK(
                     &pointer->temporary, 
-                    unsigned int, 
+                    collision_idx_info, 
                     pointer->collider_count - 1
                     );
         unsigned int collision_count = 0;
 
         for(unsigned int j = 0  ; j < pointer->collider_count ; j++){
 
-            if (j == i) continue;
+            // @note: BIG ASSUMPTION, WE ARE NOT INSIDE THE OBJECT WE ARE COLLIDING WITH
+            //        ELSE THIS ENTIRE SIMULATION WILL BREAK DOWN
+
+            if (j == i || pointer->colliders[j].properties == NONE) continue;
+
             ImGui::Begin("Collision detection debug");
 
             ImGui::Text("For target index %u", j);
@@ -825,7 +830,7 @@ void update_physics(GameMemory * pointer, float delta_time){
             if (movement.y == 0.0f){
                 t_near.y = ((target.pos.y - (0.5 * target.dim.y)) - current->pos.y) > 0 ? FLOAT_POS_INFINITY : FLOAT_NEG_INFINITY;
                 t_far.y = ((target.pos.y + (0.5 * target.dim.y)) - current->pos.y) > 0 ? FLOAT_POS_INFINITY : FLOAT_NEG_INFINITY;
-            }  else {
+            } else {
                 ImGui::Text("Initializing y with default condition");
                 t_near.y = ((target.pos.y - (0.5f * target.dim.y)) - current->pos.y) / movement.y;
                 t_far.y = ((target.pos.y + (0.5f * target.dim.y)) - current->pos.y) / movement.y;
@@ -854,24 +859,37 @@ void update_physics(GameMemory * pointer, float delta_time){
                 continue;
             };
 
-            float max_col_time = 0.0f;
-            float min_col_time = 0.0f;
 
             ImGui::Text("After swapping");
             ImGui::Text("t_near : %f, %f", t_near.x, t_near.y);
             ImGui::Text("t_far  : %f, %f", t_far.x, t_far.y);
 
-            max_col_time = min_if_positive(t_far.x, t_far.y);
-            min_col_time = min_if_positive(t_near.x, t_near.y);
+            float max_col_time = 0.0f;
+            float min_col_time = 0.0f;
 
+            glm::vec2 max_normal = glm::vec2(0.0f), min_normal = glm::vec2(0.0f);
+
+            max_col_time = min_if_positive(t_far.x, t_far.y);
+            min_col_time = max_if_positive(t_near.x, t_near.y);
+
+            if(max_col_time == t_far.x) {
+                max_normal.x = movement.x > 0.0 ? 1 : -1;
+            } else {
+                max_normal.y = movement.y > 0.0 ? 1 : -1;
+            }
+
+            if (min_col_time == t_near.x){
+                min_normal.x = movement.x > 0.0 ? -1 : 1;
+            } else {
+                min_normal.y = movement.y > 0.0 ? -1 : 1;
+            }
 
             ImGui::Text("Instance value : %f %f", max_col_time, min_col_time);
-
 
             ImGui::Text("max_col_time %f", max_col_time);
             ImGui::Text("min_col_time %f", min_col_time);
             
-            // can collide but not in this time step: update velocity
+            // @note : can collide but not in this time step: update velocity
             if (max_col_time < 0.0f || min_col_time > 1.0f) {
                 ImGui::Text("not colliding with %d because not intersecting right now", j);
                 ImGui::End();
@@ -880,7 +898,13 @@ void update_physics(GameMemory * pointer, float delta_time){
 
             ImGui::End();
 
-            collision_list[collision_count] = j;
+            // @note : this can be improved by suing binary search / tree for storing 
+
+            // @note : right now we are using insertion sort for adding elements
+            
+            collision_list[collision_count].idx = j;
+            collision_list[collision_count].closest_distance = min_col_time;
+            collision_list[collision_count].normal = min_normal;
             collision_count += 1;
         }
 
@@ -888,9 +912,35 @@ void update_physics(GameMemory * pointer, float delta_time){
         ImGui::Text("collision count : %d", collision_count);
         if(collision_count == 0){
             current->pos = current->pos + movement;
-            ImGui::Text("pos : %f, %f", current->pos.x, current->pos.y);
+            // ImGui::Text("pos : %f, %f", current->pos.x, current->pos.y);
         } else {
-            ImGui::Text("collided with index %d", collision_list[0]);
+
+            unsigned int closest_idx = 0 ;
+            float closest = collision_list[0].closest_distance;
+            glm::vec2 normal = collision_list[0].normal;
+
+            for(unsigned int k = 0; k < collision_count ; k++)
+                if (closest > collision_list[k].closest_distance){
+                    closest_idx = k;
+                    closest = collision_list[k].closest_distance;
+                    normal = collision_list[k].normal;
+                }
+
+            for(unsigned int j = 0 ; j < collision_count ; j++){
+                // ImGui::Text("collided with index %d", collision_list[j].idx);
+                // ImGui::Text("collided with distance %f", collision_list[j].closest_distance);
+            }
+
+            // ImGui::Text("closest idx : %u", closest_idx);
+            // ImGui::Text("closest dist: %f", closest);
+
+            // @note: resolution
+
+            float deltax = normal.x == 0.0 ? movement.x : movement.y * closest;
+            float deltay = normal.y == 0.0 ? movement.y : movement.y * closest;
+
+            current->pos = current->pos + glm::vec2(deltax, deltay);
+
         }
         ImGui::End();
 
@@ -984,7 +1034,11 @@ void render_game_elements(GameMemory * pointer) {
     
 
     for(unsigned int i = 0 ; i < pointer->collider_count; i++){
+
+
         BoxCollider * box = pointer->colliders + i;
+        if (box->properties == NONE) continue;
+
         glm::vec4 color = glm::vec4(1.0, 1.0, 1.0, 1.0);
         if (i == pointer->player.box_collider_idx) {
             color = glm::vec4(0.0, 1.0, 0.0, 1.0);
@@ -1275,7 +1329,7 @@ void gamespace_update_function(MemoryBlock * gspace_mem){
 
     // process input 
 
-    if (is_key_pressed(SDLK_ESCAPE)){
+    if (is_key_pressed(SDLK_q)){
         set_quit_request();
     }
 
